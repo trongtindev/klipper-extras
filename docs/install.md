@@ -1,6 +1,6 @@
 # Install Klipper Common Plugin
 
-**Docs:** [Configuration](configuration.md) · [G-codes](gcodes.md) · [Wipe on bed](features/wipe_nozzle_on_bed.md) · [Wipe on rubber](features/wipe_nozzle_on_rubber.md)
+**Docs:** [Configuration](configuration.md) · [G-codes](gcodes.md) · [Wipe on bed](features/wipe_nozzle_on_bed.md) · [Wipe on rubber](features/wipe_nozzle_on_rubber.md) · [Form tip](features/form_tip.md)
 
 ## Requirements
 
