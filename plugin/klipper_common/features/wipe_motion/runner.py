@@ -5,32 +5,20 @@ from __future__ import annotations
 import logging
 
 from ... import messages as host_msg
+from ..hook.execute import bind_hooked, call_common_hook
+from ..hook.load import load_action_hook_templates, load_on_hook_fail, parse_user_config
 from . import messages as msg
 from .constants import (
     CMD_ABSOLUTE,
     CMD_RESTORE_GCODE_STATE,
     CMD_SAVE_GCODE_STATE,
     DEFAULT_FAN_OBJECT,
+    WIPE_HOOK_ACTIONS,
 )
 from .hints import collect_wipe_hints
-from .resolve import plan_wipe_moves
+from .resolve import plan_wipe_actions
 from .types import WipeMove, WipePathSettings
 from .validate import validate_path
-
-
-def config_has(config, name):
-    try:
-        return config.fileconfig.has_option(config.get_name(), name)
-    except Exception:
-        return False
-
-
-def parse_user_config(config, option_keys) -> dict:
-    user = {}
-    for key in option_keys:
-        if config_has(config, key):
-            user[key] = config.get(key)
-    return user
 
 
 class WipeRunner:
@@ -44,6 +32,13 @@ class WipeRunner:
         self.gcode_name = spec.gcode
         self._user = parse_user_config(config, spec.option_keys)
         self.settings = None
+        self._hook_templates = load_action_hook_templates(
+            config, self.printer, WIPE_HOOK_ACTIONS
+        )
+        self._on_hook_fail = load_on_hook_fail(config)
+        self._hooked = bind_hooked(
+            self.printer, self._hook_templates, self._on_hook_fail, self.kind
+        )
         self.printer.register_event_handler("klippy:connect", self._handle_connect)
         self.gcode.register_command(
             self.gcode_name,
@@ -80,24 +75,49 @@ class WipeRunner:
         homed = toolhead.get_status(eventtime).get("homed_axes", "")
         if not all(axis in homed for axis in "xyz"):
             raise gcmd.error(msg.not_homed())
-        have_temp = self._wait_nozzle(gcmd)
-        prev_fan = self._fan_speed_now(eventtime) if have_temp else 0.0
+        will_heat = not (
+            s.nozzle_temperature is None and s.min_nozzle_temp is None
+        )
+        prev_fan = self._fan_speed_now(eventtime) if will_heat else 0.0
         state_name = self.gcode_name
         self._save_gcode_state(state_name)
+        have_temp = False
         try:
+            extra_kind = {"kind": self.kind}
+            call_common_hook(self.printer, "before", extra_kind)
             self.gcode.run_script_from_command(CMD_ABSOLUTE)
+            if will_heat:
+                have_temp = self._hooked("heat", lambda: self._wait_nozzle(gcmd))
+            else:
+                have_temp = self._wait_nozzle(gcmd)
             if have_temp and s.retract > 0:
-                self.gcode.run_script_from_command(
-                    "G91\nG1 E%.3f F%.0f\nG90" % (-s.retract, s.retract_speed * 60.0)
+                self._hooked(
+                    "retract",
+                    lambda: self.gcode.run_script_from_command(
+                        "G91\nG1 E%.3f F%.0f\nG90"
+                        % (-s.retract, s.retract_speed * 60.0)
+                    ),
                 )
-            if have_temp:
-                self._set_fan(s.fan_speed)
-            for move in plan_wipe_moves(s):
-                self._emit_move(move)
+            if have_temp and s.fan is not None:
+                self._hooked("fan", lambda: self._set_fan(s.fan_speed))
+            for step in plan_wipe_actions(s):
+                extra = {}
+                if step.pass_index is not None:
+                    extra["pass_index"] = step.pass_index
+                self._hooked(
+                    step.name,
+                    lambda moves=step.moves: self._emit_moves(moves),
+                    extra,
+                )
+            call_common_hook(self.printer, "after", extra_kind)
         finally:
             if have_temp:
                 self._restore_fan(prev_fan)
             self._restore_gcode_state(state_name, s)
+
+    def _emit_moves(self, moves) -> None:
+        for move in moves:
+            self._emit_move(move)
 
     def _save_gcode_state(self, state_name: str) -> None:
         self.gcode.run_script_from_command(CMD_SAVE_GCODE_STATE % (state_name,))

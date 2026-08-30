@@ -28,3 +28,5 @@ COMMON_VERSION
 | `WIPE_NOZZLE_ON_BED` | [features/wipe_nozzle_on_bed.md](features/wipe_nozzle_on_bed.md) |
 | `WIPE_NOZZLE_ON_RUBBER` | [features/wipe_nozzle_on_rubber.md](features/wipe_nozzle_on_rubber.md) |
 | `FORM_TIP` | [features/form_tip.md](features/form_tip.md) |
+
+`[klipper_common hook]` does not register a command. See [features/hook.md](features/hook.md).

@@ -98,3 +98,12 @@ class WipeMove:
     z: Optional[float]
     speed: float
     kind: str
+
+
+@dataclass(frozen=True)
+class WipeActionStep:
+    """One named wipe action with its moves (for per-action hooks)."""
+
+    name: str
+    moves: tuple
+    pass_index: Optional[int] = None

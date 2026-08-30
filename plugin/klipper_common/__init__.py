@@ -173,8 +173,11 @@ class KlipperCommon:
     def _extra_gcodes(self) -> list[str]:
         names = []
         for kind in sorted(FEATURE_KINDS):
-            if self._prefix_loaded(kind):
-                names.append(FEATURE_GCODES[kind])
+            if not self._prefix_loaded(kind):
+                continue
+            gcode_name = FEATURE_GCODES.get(kind)
+            if gcode_name:
+                names.append(gcode_name)
         return names
 
     def cmd_COMMON_STATUS(self, gcmd):

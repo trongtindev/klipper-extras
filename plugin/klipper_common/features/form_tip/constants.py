@@ -2,11 +2,25 @@
 
 from __future__ import annotations
 
+from ..hook.policy import hook_option_keys_for_actions
 from .messages import help_form_tip
 from .types import FormTipProfile
 
 KIND = "form_tip"
 GCODE = "FORM_TIP"
+
+FORM_TIP_HOOK_ACTIONS = (
+    "heat",
+    "unload_start",
+    "sep_fast",
+    "sep_slow",
+    "ramming",
+    "fan",
+    "cool",
+    "skinnydip",
+    "parking",
+)
+
 
 OPTION_KEYS = frozenset(
     (
@@ -36,7 +50,7 @@ OPTION_KEYS = frozenset(
         "nozzle_temperature",
         "min_nozzle_temp",
     )
-)
+) | hook_option_keys_for_actions(FORM_TIP_HOOK_ACTIONS)
 
 # Built-in profiles. profile key in config selects one; individual keys override.
 # a4t_hgx_lite matches the numbers from _FORM_TIP_VARS (original config).
@@ -73,10 +87,7 @@ PARAM_ALIASES = {
 
 # G-code wrap commands
 CMD_ABSOLUTE = "G90"
-CMD_RELATIVE = "G91"
 CMD_EXTRUDE_ABS = "M83"
-CMD_SAVE_STATE = "SAVE_GCODE_STATE NAME=%s"
-CMD_RESTORE_STATE = "RESTORE_GCODE_STATE NAME=%s"
 CMD_SAVE_STATE_FORM_TIP = "SAVE_GCODE_STATE NAME=FORM_TIP"
 CMD_RESTORE_STATE_FORM_TIP = "RESTORE_GCODE_STATE NAME=FORM_TIP"
 

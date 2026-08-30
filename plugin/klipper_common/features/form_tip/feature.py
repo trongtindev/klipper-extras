@@ -5,12 +5,15 @@ from __future__ import annotations
 import logging
 
 from ... import messages as host_msg
+from ..hook.execute import bind_hooked, call_common_hook
+from ..hook.load import load_action_hook_templates, load_on_hook_fail, parse_user_config
 from . import messages as msg
 from .constants import (
     CMD_ABSOLUTE,
     CMD_EXTRUDE_ABS,
     CMD_RESTORE_STATE_FORM_TIP,
     CMD_SAVE_STATE_FORM_TIP,
+    FORM_TIP_HOOK_ACTIONS,
     GCODE,
     HELP_TEXT,
     KIND,
@@ -21,19 +24,13 @@ from .types import FormTipHints
 from .validate import validate_tip
 
 
-def _config_has(config, name):
-    try:
-        return config.fileconfig.has_option(config.get_name(), name)
-    except Exception:
-        return False
-
-
-def _parse_user_config(config) -> dict:
-    user = {}
-    for key in OPTION_KEYS:
-        if _config_has(config, key):
-            user[key] = config.get(key)
-    return user
+def _tip_step_hook(label: str):
+    """Map a planned step label to (action name, extra context)."""
+    if label.startswith("cool_"):
+        return "cool", {"pass_index": int(label.split("_", 1)[1])}
+    if label == "fan_on":
+        return "fan", None
+    return label, None
 
 
 class FormTipRunner:
@@ -44,8 +41,15 @@ class FormTipRunner:
         self.gcode = self.printer.lookup_object("gcode")
         self.kind = KIND
         self.gcode_name = GCODE
-        self._user = _parse_user_config(config)
+        self._user = parse_user_config(config, OPTION_KEYS)
         self.settings = None
+        self._hook_templates = load_action_hook_templates(
+            config, self.printer, FORM_TIP_HOOK_ACTIONS
+        )
+        self._on_hook_fail = load_on_hook_fail(config)
+        self._hooked = bind_hooked(
+            self.printer, self._hook_templates, self._on_hook_fail, self.kind
+        )
         self.printer.register_event_handler("klippy:connect", self._handle_connect)
         self.gcode.register_command(
             self.gcode_name,
@@ -137,18 +141,29 @@ class FormTipRunner:
         # Fan speed before
         prev_fan = self._fan_speed_now()
 
+        will_heat = not (
+            s.nozzle_temperature is None and s.min_nozzle_temp is None
+        )
         self._save_gcode_state()
         try:
-            # Phase 0: Heat wait
-            self._wait_nozzle(gcmd, s)
+            extra_kind = {"kind": self.kind}
+            call_common_hook(self.printer, "before", extra_kind)
+            if will_heat:
+                self._hooked("heat", lambda: self._wait_nozzle(gcmd, s))
+            else:
+                self._wait_nozzle(gcmd, s)
 
-            # M83 (relative extrusion)
             self.gcode.run_script_from_command(CMD_EXTRUDE_ABS)
 
-            # Emit all phases (fan_on is inside plan_tip_steps, before cooling)
             for step in plan_tip_steps(s):
-                self.gcode.run_script_from_command(step.command)
+                action, extra = _tip_step_hook(step.label)
+                self._hooked(
+                    action,
+                    lambda cmd=step.command: self.gcode.run_script_from_command(cmd),
+                    extra,
+                )
 
+            call_common_hook(self.printer, "after", extra_kind)
         finally:
             self._restore_fan(prev_fan)
             self._restore_gcode_state()

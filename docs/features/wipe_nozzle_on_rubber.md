@@ -38,8 +38,12 @@ Use your pad pose, not the numbers above as a universal machine default.
 | `nozzle_temperature` | float | omitted | If set: heat and wait. Else wait until current ≥ `min_nozzle_temp` when that floor is known. |
 | `fan_speed` | float | `1.0` | 0.0–1.0; restored after wipe |
 | `fan` | string | `fan` if that object exists, else skip | Missing user-named fan is a config error |
+| `before_<action>_gcode` / `after_<action>_gcode` | G-code template | empty | Per-action hooks. Same action names as [wipe on bed](wipe_nozzle_on_bed.md#actions). [Command templates](https://www.klipper3d.org/Command_Templates.md). |
+| `on_hook_fail` | string | `stop` | `stop` \| `continue` for **this** section’s action hooks. |
 
 Speeds `> 0`. `travel_z > wipe_z`. Negative `wipe_z` is a config error. If both `nozzle_temperature` and `min_nozzle_temp` are set, nozzle temp must be `>= min_nozzle_temp`.
+
+Command wrap (optional `[klipper_common hook]`): [hook.md](hook.md). Skipped work skips that action’s hooks. Unknown commands are not a hook failure; use `{ action_raise_error('…') }`.
 
 ## G-code
 
@@ -47,7 +51,7 @@ Speeds `> 0`. `travel_z > wipe_z`. Negative `wipe_z` is a config error. If both 
 
 Call from `PRINT_START` **after XYZ are homed**. Heat the nozzle first, or set `nozzle_temperature` here.
 
-Approach lifts to `travel_z` in place, then moves XY, then drops to `wipe_z`. Saves G-code state (`SAVE_GCODE_STATE NAME=WIPE_NOZZLE_ON_RUBBER`) before motion and restores it afterwards (`RESTORE_GCODE_STATE NAME=WIPE_NOZZLE_ON_RUBBER MOVE=1`) so coordinate mode, speed override, and XYZ return to the pre-wipe values. Fan is restored separately. Retract is not undone.
+Approach lifts to `travel_z` in place, then moves XY, then drops to `wipe_z`. Saves G-code state (`SAVE_GCODE_STATE NAME=WIPE_NOZZLE_ON_RUBBER`) after homing checks, before hooks and actions (including heat). Restores in `finally` (`RESTORE_GCODE_STATE NAME=WIPE_NOZZLE_ON_RUBBER MOVE=1`) so coordinate mode, speed override, and XYZ return to the pre-wipe values. Fan is restored separately. Retract is not undone.
 
 ```gcode
 G28

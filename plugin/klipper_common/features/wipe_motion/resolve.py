@@ -6,7 +6,13 @@ from typing import Optional
 
 from . import messages as msg
 from .constants import MOVE_LIFT, MOVE_TRAVEL, MOVE_WIPE
-from .types import WipeKindProfile, WipeKlipperHints, WipeMove, WipePathSettings
+from .types import (
+    WipeActionStep,
+    WipeKindProfile,
+    WipeKlipperHints,
+    WipeMove,
+    WipePathSettings,
+)
 
 
 def present(user: dict, key: str) -> bool:
@@ -201,3 +207,20 @@ def plan_wipe_moves(settings: WipePathSettings) -> list[WipeMove]:
     last = moves[-1]
     moves.append(WipeMove(last.x, last.y, s.travel_z, s.travel_speed, MOVE_LIFT))
     return moves
+
+
+def plan_wipe_actions(settings: WipePathSettings) -> list:
+    """Group planned moves into named actions (z_hop, travel, lower, pass, lift)."""
+    moves = plan_wipe_moves(settings)
+    steps = [
+        WipeActionStep("z_hop", (moves[0],)),
+        WipeActionStep("travel", (moves[1],)),
+        WipeActionStep("lower", (moves[2],)),
+    ]
+    mid = moves[3:-1]
+    pass_index = 0
+    for i in range(0, len(mid), 2):
+        steps.append(WipeActionStep("pass", tuple(mid[i : i + 2]), pass_index=pass_index))
+        pass_index += 1
+    steps.append(WipeActionStep("lift", (moves[-1],)))
+    return steps

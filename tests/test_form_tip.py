@@ -10,6 +10,7 @@ from klipper_common.features.form_tip import (
     OPTION_KEYS as FORM_TIP_KEYS,
 )
 from klipper_common.features.form_tip.constants import PARAM_ALIASES
+from klipper_common.features.form_tip.feature import FormTipRunner, _tip_step_hook
 from klipper_common.features.form_tip.resolve import (
     overlay_gcode_params,
     plan_tip_steps,
@@ -303,3 +304,149 @@ def test_sep_slow_len_with_unload_start():
         }
     )
     assert s.sep_slow_len == 50.0 - 5.0 - 10.0
+
+
+# ── Command hooks ─────────────────────────────────────────────────────────
+
+
+def test_tip_step_hook_labels():
+    assert _tip_step_hook("cool_0") == ("cool", {"pass_index": 0})
+    assert _tip_step_hook("cool_3") == ("cool", {"pass_index": 3})
+    assert _tip_step_hook("fan_on") == ("fan", None)
+    assert _tip_step_hook("sep_fast") == ("sep_fast", None)
+
+
+class _TipGcode:
+    def __init__(self):
+        self.scripts = []
+
+    def register_command(self, name, func, desc=None):
+        return None
+
+    def run_script_from_command(self, script):
+        self.scripts.append(script)
+
+
+class _TipFileConfig:
+    def has_option(self, section, option):
+        return False
+
+
+class _TipPrinter:
+    def __init__(self, gcode):
+        self._objects = {"gcode": gcode}
+
+    def lookup_object(self, name, default=None):
+        return self._objects.get(name, default)
+
+    def register_event_handler(self, name, callback):
+        return None
+
+    def get_reactor(self):
+        class _R:
+            def monotonic(self):
+                return 0.0
+
+        return _R()
+
+
+class _TipConfig:
+    def __init__(self, printer):
+        self._printer = printer
+        self.fileconfig = _TipFileConfig()
+
+    def get_printer(self):
+        return self._printer
+
+    def get_name(self):
+        return "klipper_common form_tip"
+
+
+class _TipGcmd:
+    def error(self, text):
+        raise RuntimeError(text)
+
+    def respond_info(self, text):
+        return None
+
+    def get(self, key, default=None):
+        return default
+
+
+class _EmitTipTemplate:
+    def __init__(self, line):
+        self.line = line
+
+    def render(self, context=None):
+        extra = ""
+        if context and "pass_index" in context:
+            extra = " %s" % (context["pass_index"],)
+        return self.line + extra
+
+
+def _make_tip_runner(settings, gcode=None):
+    gcode = gcode or _TipGcode()
+    printer = _TipPrinter(gcode)
+    runner = FormTipRunner(_TipConfig(printer))
+    runner.settings = settings
+    return runner, gcode
+
+
+def test_cmd_form_tip_action_hooks_order():
+    s = _resolve(
+        {
+            "profile": "a4t_hgx_lite",
+            "cooling_moves": 1,
+            "unloading_speed_start_len": 0,
+            "ramming_len": 0,
+            "fan_speed": 0,
+            "use_skinnydip": False,
+            "parking_distance": 0,
+        }
+    )
+    runner, gcode = _make_tip_runner(s)
+    runner._hook_templates[("sep_fast", "before")] = _EmitTipTemplate("BEFORE_SEP")
+    runner._hook_templates[("sep_fast", "after")] = _EmitTipTemplate("AFTER_SEP")
+    runner._hook_templates[("cool", "before")] = _EmitTipTemplate("BEFORE_COOL")
+    runner._hook_templates[("cool", "after")] = _EmitTipTemplate("AFTER_COOL")
+    runner.cmd_FORM_TIP(_TipGcmd())
+    scripts = gcode.scripts
+    assert scripts[0] == "SAVE_GCODE_STATE NAME=FORM_TIP"
+    assert scripts[-1] == "RESTORE_GCODE_STATE NAME=FORM_TIP"
+    i_before = scripts.index("BEFORE_SEP")
+    i_after = scripts.index("AFTER_SEP")
+    i_cool_b = scripts.index("BEFORE_COOL 0")
+    i_cool_a = scripts.index("AFTER_COOL 0")
+    assert i_before < i_after < i_cool_b < i_cool_a
+
+
+def test_cmd_form_tip_common_hooks_wrap():
+    s = _resolve(
+        {
+            "profile": "a4t_hgx_lite",
+            "cooling_moves": 0,
+            "unloading_speed_start_len": 0,
+            "ramming_len": 0,
+            "fan_speed": 0,
+            "use_skinnydip": False,
+            "parking_distance": 0,
+        }
+    )
+    runner, gcode = _make_tip_runner(s)
+
+    class _Common:
+        def run_command_before(self, extra=None):
+            gcode.run_script_from_command("COMMON_BEFORE")
+
+        def run_command_after(self, extra=None):
+            gcode.run_script_from_command("COMMON_AFTER")
+
+    runner.printer._objects["klipper_common hook"] = _Common()
+    runner.cmd_FORM_TIP(_TipGcmd())
+    scripts = gcode.scripts
+    assert scripts[0] == "SAVE_GCODE_STATE NAME=FORM_TIP"
+    assert scripts[1] == "COMMON_BEFORE"
+    assert scripts.index("COMMON_AFTER") < scripts.index(
+        "RESTORE_GCODE_STATE NAME=FORM_TIP"
+    )
+    assert scripts[-1] == "RESTORE_GCODE_STATE NAME=FORM_TIP"

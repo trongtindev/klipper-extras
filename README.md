@@ -10,7 +10,7 @@ The extra lives under [`plugin/klipper_common/`](plugin/klipper_common).
 
 - Requires **Klipper ≥ v0.13.0** (checked at load)
 - Host section: `[klipper_common]`
-- Features (optional prefix sections): see [wipe on bed](docs/features/wipe_nozzle_on_bed.md), [wipe on rubber](docs/features/wipe_nozzle_on_rubber.md), [form tip](docs/features/form_tip.md)
+- Features (optional prefix sections): see [wipe on bed](docs/features/wipe_nozzle_on_bed.md), [wipe on rubber](docs/features/wipe_nozzle_on_rubber.md), [form tip](docs/features/form_tip.md), [command hooks](docs/features/hook.md)
 - G-codes: **`COMMON_STATUS`**, **`COMMON_VERSION`**; feature commands only when that section is present
 - Pure-logic unit tests (`pytest`)
 
@@ -34,7 +34,7 @@ Uninstall:
 
 Then add `[klipper_common]` to `printer.cfg` (see [`config/sample-klipper-common.cfg`](config/sample-klipper-common.cfg)).
 
-**Docs:** [Install](docs/install.md) · [Configuration](docs/configuration.md) · [G-codes](docs/gcodes.md) · [Wipe on bed](docs/features/wipe_nozzle_on_bed.md) · [Wipe on rubber](docs/features/wipe_nozzle_on_rubber.md) · [Form tip](docs/features/form_tip.md)
+**Docs:** [Install](docs/install.md) · [Configuration](docs/configuration.md) · [G-codes](docs/gcodes.md) · [Wipe on bed](docs/features/wipe_nozzle_on_bed.md) · [Wipe on rubber](docs/features/wipe_nozzle_on_rubber.md) · [Form tip](docs/features/form_tip.md) · [Hooks](docs/features/hook.md)
 
 ### Tests
 
@@ -53,7 +53,7 @@ pytest tests/ -q
 # log_level: info
 ```
 
-Feature samples: [`config/sample-wipe-nozzle-on-bed.cfg`](config/sample-wipe-nozzle-on-bed.cfg), [`config/sample-wipe-nozzle-on-rubber.cfg`](config/sample-wipe-nozzle-on-rubber.cfg), [`config/sample-form-tip.cfg`](config/sample-form-tip.cfg).
+Feature samples: [`config/sample-wipe-nozzle-on-bed.cfg`](config/sample-wipe-nozzle-on-bed.cfg), [`config/sample-wipe-nozzle-on-rubber.cfg`](config/sample-wipe-nozzle-on-rubber.cfg), [`config/sample-form-tip.cfg`](config/sample-form-tip.cfg), [`config/sample-hook.cfg`](config/sample-hook.cfg).
 
 Verify after restart:
 

@@ -43,6 +43,8 @@ Omitted `profile` → all fields must be user-set (no safe default). Use `profil
 | `fan` | string | `fan` (if object exists) | Fan object name. |
 | `nozzle_temperature` | float | omitted | If set: heat and wait before tip forming. |
 | `min_nozzle_temp` | float | `[extruder] min_extrude_temp` if that key is set | If omitted and extruder has no `min_extrude_temp`, skip heat wait (console warning). |
+| `before_<action>_gcode` / `after_<action>_gcode` | G-code template | empty | Per-action hooks. See **Algorithm**. [Command templates](https://www.klipper3d.org/Command_Templates.md). |
+| `on_hook_fail` | string | `stop` | `stop` \| `continue` for **this** section’s action hooks. |
 
 `sep_fast_len + unloading_speed_start_len` must be `<= tip_distance`. All speeds > 0. All lengths >= 0. `fan_speed` 0.0–1.0. `cooling_moves >= 0`. `cool_len > 0` when `cooling_moves > 0`. `dip_in > 0` when `use_skinnydip`.
 
@@ -50,17 +52,19 @@ Omitted `profile` → all fields must be user-set (no safe default). Use `profil
 
 All speeds are mm/s. Emitted as `F = speed × 60`. Relative extrusion (`M83`) after save.
 
-1. **Heat wait** — `M109` if `nozzle_temperature` set, else `M109` to target if below `min_nozzle_temp`
-2. **Unloading speed start** — `G1 E−unloading_speed_start_len` (if > 0)
-3. **Separation fast** — `G1 E−sep_fast_len`
-4. **Separation slow** — `G1 E−sep_slow_len` (computed, if > 0)
-5. **Ramming** — `G1 E+ramming_len` (if > 0)
-6. **Fan assist** — `M106` / `SET_FAN_SPEED` (if `fan_speed > 0`, before cooling)
-7. **Cooling** — linear speed ramp from `cool_speed_slow` to `cool_speed_fast` across `cooling_moves` pairs
-8. **Skinnydip** — `E+dip_in` → `G4` → `E−dip_in` → `G4` (if `use_skinnydip`)
-9. **Parking** — `G1 E−|parking_distance|` (if != 0)
+Each numbered step is an action with `before_<action>_gcode` / `after_<action>_gcode`. Skipped work skips that action’s hooks. `cool` runs **per** cooling pair (`pass_index`). Optional command wrap: [hook.md](hook.md).
 
-Fan restored + `RESTORE_GCODE_STATE NAME=FORM_TIP` in `finally`.
+1. **`heat`** — `M109` if `nozzle_temperature` set, else `M109` to target if below `min_nozzle_temp`
+2. **`unload_start`** — `G1 E−unloading_speed_start_len` (if > 0)
+3. **`sep_fast`** — `G1 E−sep_fast_len`
+4. **`sep_slow`** — `G1 E−sep_slow_len` (computed, if > 0)
+5. **`ramming`** — `G1 E+ramming_len` (if > 0)
+6. **`fan`** — `M106` / `SET_FAN_SPEED` (if `fan_speed > 0`, before cooling)
+7. **`cool`** — linear speed ramp from `cool_speed_slow` to `cool_speed_fast` across `cooling_moves` pairs
+8. **`skinnydip`** — `E+dip_in` → `G4` → `E−dip_in` → `G4` (if `use_skinnydip`)
+9. **`parking`** — `G1 E−|parking_distance|` (if != 0)
+
+Fan restored + `RESTORE_GCODE_STATE NAME=FORM_TIP` in `finally` (no hooks). Unknown commands are not a hook failure; use `{ action_raise_error('…') }`.
 
 ## G-code
 
@@ -85,7 +89,7 @@ FORM_TIP NOZZLE_TEMP=220 COOLING_MOVES=6
 FORM_TIP UNLOAD_START=100 TIP_DISTANCE=40
 ```
 
-Saves G-code state (`SAVE_GCODE_STATE NAME=FORM_TIP`) before motion and restores it afterwards (`RESTORE_GCODE_STATE NAME=FORM_TIP`) so coordinate mode and speed override return to pre-command values. Fan is restored separately.
+Saves G-code state (`SAVE_GCODE_STATE NAME=FORM_TIP`) after homing checks, before hooks and actions (including heat). Restores in `finally` (`RESTORE_GCODE_STATE NAME=FORM_TIP`) so coordinate mode and speed override return to pre-command values. Fan is restored separately.
 
 ## Status
 

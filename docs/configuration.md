@@ -44,6 +44,7 @@ Enabled by a documented `[klipper_common <kind>]` prefix. Without the section, t
 | Wipe nozzle on bed | [features/wipe_nozzle_on_bed.md](features/wipe_nozzle_on_bed.md) |
 | Wipe nozzle on rubber | [features/wipe_nozzle_on_rubber.md](features/wipe_nozzle_on_rubber.md) |
 | Form tip | [features/form_tip.md](features/form_tip.md) |
+| Common command hooks | [features/hook.md](features/hook.md) (no G-code; optional wrap) |
 
 ## Status (Moonraker / `printer.klipper_common`)
 

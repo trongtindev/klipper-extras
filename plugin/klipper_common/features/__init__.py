@@ -11,6 +11,10 @@ from .form_tip import (
     KIND as FORM_TIP_KIND,
     load_feature as load_form_tip,
 )
+from .hook import (
+    KIND as HOOK_KIND,
+    load_feature as load_hook,
+)
 from .wipe_nozzle_on_bed import (
     GCODE as BED_GCODE,
     KIND as BED_KIND,
@@ -26,9 +30,11 @@ from .wipe_nozzle_on_rubber import (
 FEATURE_LOADERS = {
     BED_KIND: load_wipe_nozzle_on_bed,
     FORM_TIP_KIND: load_form_tip,
+    HOOK_KIND: load_hook,
     RUBBER_KIND: load_wipe_nozzle_on_rubber,
 }
 
+# Kinds without a G-code command are omitted (hook is config-only).
 FEATURE_GCODES = {
     BED_KIND: BED_GCODE,
     FORM_TIP_KIND: FORM_TIP_GCODE,

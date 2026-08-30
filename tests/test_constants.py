@@ -11,6 +11,7 @@ from klipper_common.features.form_tip import (
     KIND as FORM_TIP_KIND,
     OPTION_KEYS as FORM_TIP_KEYS,
 )
+from klipper_common.features.hook import KIND as HOOK_KIND, OPTION_KEYS as HOOK_KEYS
 from klipper_common.features.wipe_nozzle_on_bed import KIND as BED_KIND, OPTION_KEYS as BED_KEYS
 from klipper_common.features.wipe_nozzle_on_rubber import (
     KIND as RUBBER_KIND,
@@ -24,11 +25,12 @@ def test_host_config_option_keys():
 
 
 def test_feature_registry():
-    assert FEATURE_KINDS == frozenset((BED_KIND, FORM_TIP_KIND, RUBBER_KIND))
+    assert FEATURE_KINDS == frozenset((BED_KIND, FORM_TIP_KIND, HOOK_KIND, RUBBER_KIND))
     assert set(FEATURE_LOADERS) == FEATURE_KINDS
     assert FEATURE_GCODES[BED_KIND] == "WIPE_NOZZLE_ON_BED"
     assert FEATURE_GCODES[FORM_TIP_KIND] == "FORM_TIP"
     assert FEATURE_GCODES[RUBBER_KIND] == "WIPE_NOZZLE_ON_RUBBER"
+    assert HOOK_KIND not in FEATURE_GCODES
 
 
 def test_feature_option_keys_are_owned_and_not_host():
@@ -52,6 +54,12 @@ def test_feature_option_keys_are_owned_and_not_host():
     assert BED_KEYS.isdisjoint(CONFIG_OPTION_KEYS)
     assert RUBBER_KEYS.isdisjoint(CONFIG_OPTION_KEYS)
     assert FORM_TIP_KEYS.isdisjoint(CONFIG_OPTION_KEYS)
+    assert HOOK_KEYS.isdisjoint(CONFIG_OPTION_KEYS)
+    assert "before_pass_gcode" in BED_KEYS
+    assert "before_pass_gcode" in RUBBER_KEYS
+    assert "before_cool_gcode" in FORM_TIP_KEYS
+    assert "command_before_gcode" in HOOK_KEYS
+    assert "debug" in HOOK_KEYS
 
 
 def test_log_level_enabled_ladder():

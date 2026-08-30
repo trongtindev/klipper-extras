@@ -13,7 +13,7 @@ from klipper_common.features.wipe_motion.constants import (
 )
 from klipper_common.features.wipe_motion.hints import collect_wipe_hints
 from klipper_common.features.wipe_motion.messages import skip_nozzle_wait
-from klipper_common.features.wipe_motion.resolve import plan_wipe_moves
+from klipper_common.features.wipe_motion.resolve import plan_wipe_actions, plan_wipe_moves
 from klipper_common.features.wipe_motion.runner import WipeRunner
 from klipper_common.features.wipe_motion.types import WipeKlipperHints
 from klipper_common.features.wipe_motion.validate import validate_path
@@ -216,6 +216,22 @@ def test_validate_zero_length():
     result = validate_path(s)
     assert result.errors
     assert "start and end" in result.errors[0].message
+
+
+def test_plan_wipe_actions_names():
+    s = _bed({"retract": 0, "passes": 2})
+    steps = plan_wipe_actions(s)
+    assert [step.name for step in steps] == [
+        "z_hop",
+        "travel",
+        "lower",
+        "pass",
+        "pass",
+        "lift",
+    ]
+    assert steps[3].pass_index == 0
+    assert steps[4].pass_index == 1
+    assert len(steps[3].moves) == 2
 
 
 def test_plan_wipe_moves_along_x():
@@ -522,6 +538,86 @@ def test_cmd_wipe_fan_restore_failure_logs_warning(caplog):
         with pytest.raises(RuntimeError, match="M106"):
             runner.cmd_wipe(_FakeGcmd())
     assert any("restore fan" in r.getMessage() for r in caplog.records)
+
+
+class _EmitTemplate:
+    def __init__(self, line):
+        self.line = line
+
+    def render(self, context=None):
+        extra = ""
+        if context and "pass_index" in context:
+            extra = " %s" % (context["pass_index"],)
+        return self.line + extra
+
+
+class _FakeCommonHook:
+    def __init__(self, gcode):
+        self.gcode = gcode
+
+    def run_command_before(self, extra=None):
+        self.gcode.run_script_from_command("COMMON_BEFORE")
+
+    def run_command_after(self, extra=None):
+        self.gcode.run_script_from_command("COMMON_AFTER")
+
+
+def test_cmd_wipe_common_hooks_wrap():
+    s = _bed({"retract": 0, "passes": 1})
+    runner, gcode = _make_runner(BED_SPEC, s)
+    runner.printer._objects["klipper_common hook"] = _FakeCommonHook(gcode)
+    runner.cmd_wipe(_FakeGcmd())
+    assert _script_index(gcode.scripts, "SAVE_GCODE_STATE") < _script_index(
+        gcode.scripts, "COMMON_BEFORE"
+    )
+    assert _script_index(gcode.scripts, "COMMON_BEFORE") < _script_index(
+        gcode.scripts, "G90"
+    )
+    assert _script_index(gcode.scripts, "COMMON_AFTER") < _script_index(
+        gcode.scripts, "RESTORE_GCODE_STATE"
+    )
+
+
+def test_cmd_wipe_action_hooks_order():
+    s = _bed({"retract": 0, "passes": 1})
+    runner, gcode = _make_runner(BED_SPEC, s)
+    runner._hook_templates[("z_hop", "before")] = _EmitTemplate("BEFORE_ZHOP")
+    runner._hook_templates[("z_hop", "after")] = _EmitTemplate("AFTER_ZHOP")
+    runner._hook_templates[("pass", "before")] = _EmitTemplate("BEFORE_PASS")
+    runner._hook_templates[("pass", "after")] = _EmitTemplate("AFTER_PASS")
+    runner.cmd_wipe(_FakeGcmd())
+    assert _script_index(gcode.scripts, "SAVE_GCODE_STATE") < _script_index(
+        gcode.scripts, "BEFORE_ZHOP"
+    )
+    assert _script_index(gcode.scripts, "BEFORE_ZHOP") < _script_index(
+        gcode.scripts, "AFTER_ZHOP"
+    )
+    assert _script_index(gcode.scripts, "BEFORE_PASS") < _script_index(
+        gcode.scripts, "AFTER_PASS"
+    )
+    assert _script_index(gcode.scripts, "AFTER_ZHOP") < _script_index(
+        gcode.scripts, "BEFORE_PASS"
+    )
+
+
+def test_cmd_wipe_before_hook_stop_skips_work():
+    s = _bed({"retract": 0})
+    gcode = _FakeGcode()
+    runner, gcode = _make_runner(BED_SPEC, s, gcode=gcode)
+    gcode.fail_when = lambda script: script == "STOP_HOOK"
+
+    class _FailTemplate:
+        def render(self, context=None):
+            return "STOP_HOOK"
+
+    runner._hook_templates[("z_hop", "before")] = _FailTemplate()
+    runner._on_hook_fail = "stop"
+    printer = runner.printer
+    printer.command_error = RuntimeError
+    with pytest.raises(RuntimeError, match="script failed"):
+        runner.cmd_wipe(_FakeGcmd())
+    assert not any(script.startswith("G1 X") for script in gcode.scripts)
+    assert gcode.scripts[-1].startswith("RESTORE_GCODE_STATE")
 
 
 def test_cmd_wipe_skips_retract_and_fan_when_no_temp():

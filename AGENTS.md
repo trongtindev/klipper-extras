@@ -10,7 +10,7 @@ Installer / Moonraker behavior follows [klicky-probe-plugin](https://github.com/
 
 - **Host** (`plugin/klipper_common/` root: `__init__.py`, `constants.py`, `defaults.py`, `config_validate.py`, `messages.py`, `klipper_version.py`): no feature option keys, no feature XY/Z/speed defaults, no feature G-code names.
 - **Features** live under `plugin/klipper_common/features/<kind>/`. That package owns: `KIND`, `GCODE`, `OPTION_KEYS`, profile defaults, settings resolve, messages, `load_feature`.
-- Register a feature only in `features/__init__.py` (`FEATURE_LOADERS` / `FEATURE_GCODES`). Host `load_config_prefix` dispatches through that map — do not `if kind == …` in host modules.
+- Register a feature only in `features/__init__.py` (`FEATURE_LOADERS` / `FEATURE_GCODES`). Kinds without a command omit `FEATURE_GCODES`. Host `load_config_prefix` dispatches through that map — do not `if kind == …` in host modules.
 - Shared algorithms used by *related* features (e.g. wipe path planner) go in `features/<family>/` (today `features/wipe_motion/`), **not** in host files. A library is not a feature and has no config section.
 - New feature → new package + registry entry + **`docs/features/<kind>.md`** + **`config/sample-<kind>.cfg`**. Never grow host `CONFIG_OPTION_KEYS` or dump feature options into host `docs/configuration.md` / `docs/gcodes.md`.
 
@@ -25,7 +25,7 @@ Installer / Moonraker behavior follows [klicky-probe-plugin](https://github.com/
 
 Any feature command that issues motion or changes G-code mode (G90/G91, F, retract, fan) **must** wrap that work so the printer returns to the pre-command state.
 
-- `SAVE_GCODE_STATE` **after** homing / temperature checks, **before** the first mode or motion command.
+- `SAVE_GCODE_STATE` **after** homing checks, **before** the first mode or motion command. Heat wait is a hooked action: it runs **after** save, inside `try`.
 - `RESTORE_GCODE_STATE` in `finally` (success **and** error). Use `MOVE=1` so XYZ return; `MOVE_SPEED` is that feature’s travel speed in **mm/s** (Klipper’s unit — do not multiply by 60).
 - `NAME` is the feature G-code (`WIPE_NOZZLE_ON_BED`), never a shared `"wipe"`. Sequential `WIPE_NOZZLE_ON_BED` then `WIPE_NOZZLE_ON_RUBBER` must not restore the wrong snapshot.
 - Lift to `travel_z` in absolute mode (`G90`) before `MOVE=1` so a failed wipe at `wipe_z` cannot scrape.
@@ -34,9 +34,42 @@ Any feature command that issues motion or changes G-code mode (G90/G91, F, retra
 - Restore failure: log a **warning**. Do not raise from `finally` (that hides the original error). Do not swallow it at `debug` as a silent fallback.
 - Host-only commands that do not move (`COMMON_STATUS`, `COMMON_VERSION`) do not save/restore.
 
+## Feature hooks (before / after each action)
+
+Every **action** in an action feature (not only the G-code command) must have before and after hook **call sites**. Empty Klipper G-code template = no-op. Skipped work (retract `0`, no heat, …) skips that action’s hooks. Host-only commands do not.
+
+Two layers. **The feature that owns the action owns that layer’s hook keys, templates, call sites, docs, sample.** Do not import `hook.OPTION_KEYS` into another feature (`debug` / `command_*_gcode` live only on `[klipper_common hook]`). Do not put hook keys on `[klipper_common]`.
+
+- **Common** `[klipper_common hook]` (optional): `command_before_gcode` / `command_after_gcode` / `on_hook_fail` / `debug`. No G-code command. Other extras `lookup_object("klipper_common hook", None)` — do not read that section’s keys.
+- **Feature**: `before_<action>_gcode` / `after_<action>_gcode` / `on_hook_fail` on **that** section. Wipe action names live in `wipe_motion` (`WIPE_HOOK_ACTIONS`). Form tip names live in `form_tip` (`FORM_TIP_HOOK_ACTIONS`).
+
+### One implementation — do not copy
+
+| Need | Use this | Do not |
+|------|----------|--------|
+| before → work → after | `hook/execute.py` `run_hooked_action` / `bind_hooked` (one bind per extra `__init__`) | Duplicate `_hooked` methods; `call_action_hook` before **and** after around work; copy `hook_context` / debug / render into a feature |
+| Command wrap | `call_common_hook(printer, "before"\|"after", {"kind": self.kind})` | `lookup_object("klipper_common hook")` then call templates yourself |
+| Load templates | `hook/load.py` `load_action_hook_templates` in extra `__init__` | Stuff templates into `WipePathSettings` / `FormTipSettings`; `config.get` then `run_script` later |
+| Parse section keys | `hook/load.py` `parse_user_config` (skips `*_gcode` / `on_hook_fail`) | Copy `config_has` + skip-hook-key loops into each feature |
+| Feature hook option keys | `hook/policy.py` `hook_option_keys_for_actions(THAT_FEATURE_ACTIONS)` unioned into that feature’s `OPTION_KEYS` | Hand-roll `before_%s_gcode` loops; add `debug` or `command_*_gcode` to a wipe/form_tip section |
+| `debug` console log | `[klipper_common hook]` `debug` only (no section → no debug). `call_hook` logs **every** invoke, including empty templates (`(empty)`) | A second debug flag on another section; skip empty templates in the debug log; `print()` / extra `respond_info` at call sites |
+
+New action → add the name to that feature’s `*_HOOK_ACTIONS` tuple, one `self._hooked(...)` call site (`bind_hooked` in `__init__`), docs + sample. Do not add hook option keys by hand.
+
+Load templates like Klipper `[probe] activate_gcode`: `printer.load_object(config, "gcode_macro").load_template(config, option, "")`. Run from a command handler: **render and** `run_script_from_command` in the **same** `try` (`run_hook_template`) so `continue` catches `{ action_raise_error('…') }` (raised during render). Do not `template.render()` then run in a separate `try`. **Never** `run_script()` (gcode mutex).
+
+`on_hook_fail`: `stop` (default) \| `continue` via `config.getchoice` (`load_on_hook_fail`). `stop` lets `printer.command_error` propagate. `continue` catches **only** `command_error` from render **and** nested G-code, logs a warning, proceeds. Never `except Exception` / `except:` around hooks (internal errors shut down the printer). Unknown G-code is **not** a failure in Klipper; users fail a hook with `{ action_raise_error('…') }`.
+
+Call order after homing checks and `SAVE_GCODE_STATE`, still in `try` (not `finally`):
+
+1. Common `command_before_gcode` if the hook object exists (`call_common_hook`)
+2. Each feature action that runs: `run_hooked_action` (before → work → after)
+3. Common `command_after_gcode` only if step 2 succeeded
+4. `finally`: restore fan + G-code state — **no hooks**; do not raise from `finally`
+
 ## Settings resolution (do not invert)
 
-1. Parse **only keys present** in that Klipper section (`_config_has`). Do not treat Klipper `config.get(..., default)` as “user set”.
+1. Parse **only keys present** in that Klipper section. Host: `__init__.py` `_parse_user_config`. Action features with hook keys: `hook/load.py` `parse_user_config`. Do not treat Klipper `config.get(..., default)` as “user set”.
 2. For omitted keys: **Klipper field or calc** when the object/field exists (`max_velocity`, `min_extrude_temp`, `firmware_retraction`, `safe_z_home` z_hop, `fan` object, …). Hints are read at `klippy:connect`, not guessed.
 3. Else **feature safe default** from that feature’s `constants.py` (named profile values; never printer-model coordinates).
 4. A **user-declared** value **overrides** hint and plugin default. Empty/missing → hint or default.
@@ -74,9 +107,14 @@ Do **not** invent config keys. Host keys: `CONFIG_OPTION_KEYS`. Each feature: it
 | Host user/log strings | `messages.py` (`%` formatting only) |
 | Feature registry | `features/__init__.py` |
 | Prefix dispatch | `__init__.py` `load_config_prefix` |
-| Wipe motion library (planner, hints, runner) | `features/wipe_motion/` |
+| Wipe motion library (planner, hints, runner, wipe action names) | `features/wipe_motion/` |
 | Bed wipe keys/defaults/G-code | `features/wipe_nozzle_on_bed/` |
 | Rubber wipe keys/defaults/G-code | `features/wipe_nozzle_on_rubber/` |
+| Form tip keys/defaults/G-code | `features/form_tip/` |
+| Common command hooks (no G-code) | `features/hook/` |
+| Hook invoke (render/run, debug, command wrap) | `features/hook/execute.py` (`bind_hooked`, `run_hooked_action`, `call_common_hook`, `call_hook`) |
+| Hook load (templates, `parse_user_config`, `on_hook_fail`, `debug`) | `features/hook/load.py` |
+| Hook key helper / `on_hook_fail` resolve | `features/hook/policy.py` (`hook_option_keys_for_actions`) |
 | Host option reference | `docs/configuration.md` |
 | Host G-codes | `docs/gcodes.md` |
 | Feature option + G-code reference | `docs/features/<kind>.md` |
@@ -101,7 +139,7 @@ When unused code is found, or when logic / options / G-codes / APIs change, **de
 
 - **Pure logic** (host `defaults` / `config_validate` / `messages` / `klipper_version` / `constants`; feature `constants` / resolve / validate / messages): **no** Klipper imports. Unit-test without a Klipper tree.
 - **`__init__.py`**: host Klipper I/O, `register_command`, config parse, `get_status`, `load_config` / `load_config_prefix` wiring only.
-- **Feature `feature.py` / `wipe_motion/runner.py` / `hints.py`**: may import Klipper.
+- **Feature `feature.py` / `wipe_motion/runner.py` / `hints.py` / `hook/feature.py` / `hook/load.py` / `hook/execute.py`**: may import Klipper.
 - New modules: module docstring + `from __future__ import annotations`. Relative imports inside the package; tests use `from klipper_common.… import …`.
 - Value objects: `@dataclass` / `@dataclass(frozen=True)`.
 - Long user/log text → that owner’s `messages.py` as `msg.foo(...)`. No `print()`.
@@ -130,7 +168,7 @@ Prefer extending existing tests over ad-hoc scripts.
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **klipper_common_plugin** (493 symbols, 785 relationships, 17 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **klipper_common_plugin** (911 symbols, 1552 relationships, 45 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
