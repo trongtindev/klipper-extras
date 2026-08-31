@@ -6,6 +6,14 @@ import math
 from dataclasses import replace as dataclass_replace
 from typing import Optional
 
+from ...resolve import (
+    as_float,
+    clamp_speed,
+    pick_float,
+    pick_optional_str,
+    pick_speed,
+    present,
+)
 from . import messages as msg
 from .constants import (
     ALONG_CHOICES,
@@ -29,42 +37,6 @@ from .types import (
     PurgeMove,
     PurgePathSettings,
 )
-
-
-def present(user: dict, key: str) -> bool:
-    if key not in user:
-        return False
-    val = user[key]
-    if val is None:
-        return False
-    if isinstance(val, str) and val.strip() == "":
-        return False
-    return True
-
-
-def as_float(raw, key: str) -> float:
-    if isinstance(raw, bool):
-        raise ValueError(msg.invalid_number(key, raw))
-    if isinstance(raw, (int, float)):
-        return float(raw)
-    try:
-        return float(str(raw).strip())
-    except (TypeError, ValueError) as e:
-        raise ValueError(msg.invalid_number(key, raw)) from e
-
-
-def pick_float(user: dict, key: str, hint: Optional[float], profile: float) -> float:
-    if present(user, key):
-        return as_float(user[key], key)
-    if hint is not None:
-        return float(hint)
-    return float(profile)
-
-
-def clamp_speed(value: float, max_velocity: Optional[float]) -> float:
-    if max_velocity is not None and max_velocity > 0:
-        return min(value, max_velocity)
-    return value
 
 
 def heat_wait_target(
@@ -187,13 +159,7 @@ def resolve_path_settings(
     nozzle_temperature = None
     if present(user, "nozzle_temperature"):
         nozzle_temperature = as_float(user["nozzle_temperature"], "nozzle_temperature")
-    if present(user, "fan"):
-        fan_name = str(user["fan"]).strip()
-        fan = fan_name if fan_name else None
-    elif hints.fan is not None:
-        fan = hints.fan
-    else:
-        fan = None
+    fan = pick_optional_str(user, "fan", hints.fan)
     z_hop = pick_float(user, "z_hop", hints.z_hop, profile.z_hop)
     purge_amount = pick_float(user, "purge_amount", None, profile.purge_amount)
     purge_length = None
@@ -215,8 +181,11 @@ def resolve_path_settings(
         purge_z=purge_z,
         z_hop=z_hop,
         travel_z=pick_float(user, "travel_z", None, profile.travel_z),
-        travel_speed=clamp_speed(
-            pick_float(user, "travel_speed", hints.max_velocity, profile.travel_speed),
+        travel_speed=pick_speed(
+            user,
+            "travel_speed",
+            hints.max_velocity,
+            profile.travel_speed,
             hints.max_velocity,
         ),
         purge_amount=purge_amount,

@@ -15,14 +15,6 @@ def length_invalid(key: str, value) -> str:
     return "klipper_common: %s must be >= 0, got %r" % (key, value)
 
 
-def invalid_number(key: str, value) -> str:
-    return "klipper_common: invalid %s %r (need a number)" % (key, value)
-
-
-def invalid_int(key: str, value) -> str:
-    return "klipper_common: invalid %s %r (need an integer)" % (key, value)
-
-
 def invalid_bool(key: str, value) -> str:
     return "klipper_common: invalid %s %r (need true/false or 0/1)" % (key, value)
 
@@ -94,7 +86,3 @@ def restore_gcode_state_failed(name: str) -> str:
 
 def restore_fan_failed() -> str:
     return "klipper_common: restore fan failed"
-
-
-def overlay_parse_failed(key: str, value) -> str:
-    return "klipper_common: gcode param %s=%r could not be parsed" % (key, value)

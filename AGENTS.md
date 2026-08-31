@@ -70,9 +70,11 @@ Call order after homing checks and `SAVE_GCODE_STATE`, still in `try` (not `fina
 ## Settings resolution (do not invert)
 
 1. Parse **only keys present** in that Klipper section. Host: `__init__.py` `_parse_user_config`. Action features with hook keys: `hook/load.py` `parse_user_config`. Do not treat Klipper `config.get(..., default)` as “user set”.
-2. For omitted keys: **Klipper field or calc** when the object/field exists (`max_velocity`, `min_extrude_temp`, `firmware_retraction`, `safe_z_home` z_hop, `fan` object, …). Hints are read at `klippy:connect`, not guessed.
+2. For omitted keys: **Klipper field or calc** when the object/field exists. Read via `klipper_fields.py` using **klippy** names only (`toolhead.get_max_velocity()`, `extruder.get_heater().min_extrude_temp`, `filament_area`, `max_e_velocity`, `max_extrude_ratio * filament_area`). Key-in-file: `PrinterConfig.status_raw_config` (`lookup_object("configfile")`). Do not try config-key names as object attributes, and do not fall back through a second API. Hints are read at `klippy:connect`, not guessed. Example: omitted `travel_speed` is `[printer] max_velocity`. Docs: [configuration.md](docs/configuration.md) **Klipper sources**.
 3. Else **feature safe default** from that feature’s `constants.py` (named profile values; never printer-model coordinates).
-4. A **user-declared** value **overrides** hint and plugin default. Empty/missing → hint or default.
+4. A **user-declared** value **overrides** hint and plugin default (set `travel_speed` on that feature section). Empty/missing → hint or default. XY speeds are then capped at `max_velocity`. Do not fill `travel_z` from `z_hop`.
+
+Canonical pick helpers: `resolve.py` (`pick_float`, `pick_speed`). Do not copy `present` / `pick_float` into a feature.
 
 Do **not** invent config keys. Host keys: `CONFIG_OPTION_KEYS`. Each feature: its `OPTION_KEYS`. Docs/sample must be a subset of the matching set.
 
@@ -93,16 +95,18 @@ Do **not** invent config keys. Host keys: `CONFIG_OPTION_KEYS`. Each feature: it
 
 ### Safe defaults
 
-- Profile defaults must be conservative (`wipe_z >= 0`, speeds clamped to `max_velocity`). Use `[extruder] min_extrude_temp` only when that key is present in config; do not invent `170`. Wipe / form tip: if absent (and no `min_nozzle_temp` / `nozzle_temperature`), skip heat wait and **warn on the console**; extruder operations (retract, fan) are also skipped. **Purge must heat:** floor from `[extruder] min_extrude_temp` < `[klipper_common] min_nozzle_temp` < the purge section. Missing floor and `nozzle_temperature` is a config error (do not skip). At command, `M109` to `nozzle_temperature` or to the floor when the nozzle is colder (host floor is read from `[klipper_common]` config / `_user`, not only `host.settings` after connect).
+- Profile defaults must be conservative (`wipe_z >= 0`, speeds clamped to `max_velocity`). Use `[extruder] min_extrude_temp` only when that key is present in config; do not invent `170`. When that hint is the heat floor, add `MIN_EXTRUDE_TEMP_HEAT_MARGIN` (5 °C) so PID dips stay above Klipper’s extrude floor (`heat_floor_from_min_extrude_temp` in host `constants.py`). User `min_nozzle_temp` / `nozzle_temperature` are not padded. Wipe / form tip: if absent (and no `min_nozzle_temp` / `nozzle_temperature`), skip heat wait and **warn on the console**; extruder operations (retract, fan) are also skipped. **Purge must heat:** floor from `[extruder] min_extrude_temp` + margin < `[klipper_common] min_nozzle_temp` < the purge section. Missing floor and `nozzle_temperature` is a config error (do not skip). At command, `M109` to `nozzle_temperature` or to the floor when the nozzle is colder (host floor is read from `[klipper_common]` config / `_user`, not only `host.settings` after connect).
 - Hints and profiles must not emit negative `wipe_z`. User may still be rejected by validation if unsafe.
 
 ## Source of truth
 
 | Concern | Canonical location |
 |---------|-------------------|
-| Host version, log literals, host option keys | `plugin/klipper_common/constants.py` (`KLIPPER_COMMON_VERSION`) |
+| Host version, log literals, host option keys, `min_extrude_temp` heat margin | `plugin/klipper_common/constants.py` (`KLIPPER_COMMON_VERSION`, `MIN_EXTRUDE_TEMP_HEAT_MARGIN`) |
 | Parse host keys | `__init__.py` `_parse_user_config` |
 | Host defaults + `CommonSettings` | `defaults.py` `resolve_settings` |
+| Field resolve (user → hint → profile) | `resolve.py` (`pick_float`, `pick_speed`) |
+| Live Klipper field reads | `klipper_fields.py` (used by feature hints) |
 | Host validation | `config_validate.py` `validate_common_config` |
 | Host user/log strings | `messages.py` (`%` formatting only) |
 | Feature registry | `features/__init__.py` |
@@ -138,10 +142,19 @@ When unused code is found, or when logic / options / G-codes / APIs change, **de
 - A rename or replacement is a delete + add, not a second copy.
 - Docs, sample, and tests in the same change (see above). Do not keep examples of options that `OPTION_KEYS` no longer has.
 
+## No temporary patches / workarounds
+
+Do not ship a temporary patch, shim, or workaround to “get unstuck.” Fix the real cause in the same change, or **stop**.
+
+- When writing **new** code or **changing** existing code, if you are blocked (unclear design, conflicting rules, missing Klipper field, tests vs. product intent, two plausible APIs, …), **stop and confirm with the user**. State the blocker and options; wait for a chosen plan. Do not pick a workaround and continue.
+- Do not leave `# workaround`, `# HACK`, `# FIXME later`, extra try/except, duplicated paths, or “good enough for now” branches.
+- A user-approved design is not a workaround. An unapproved shortcut is.
+
 ## Architecture
 
 - **Pure logic** (host `defaults` / `config_validate` / `messages` / `klipper_version` / `constants`; feature `constants` / resolve / validate / messages): **no** Klipper imports. Unit-test without a Klipper tree.
 - **`__init__.py`**: host Klipper I/O, `register_command`, config parse, `get_status`, `load_config` / `load_config_prefix` wiring only.
+- **`klipper_fields.py`**: live field reads at connect (no klippy import). Duck-types `PrinterConfig.status_raw_config`, `ToolHead.get_max_velocity()`, `PrinterExtruder`.
 - **Feature `feature.py` / `wipe_motion/runner.py` / `hints.py` / `hook/feature.py` / `hook/load.py` / `hook/execute.py`**: may import Klipper.
 - New modules: module docstring + `from __future__ import annotations`. Relative imports inside the package; tests use `from klipper_common.… import …`.
 - Value objects: `@dataclass` / `@dataclass(frozen=True)`.
@@ -171,7 +184,7 @@ Prefer extending existing tests over ad-hoc scripts.
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **klipper_common_plugin** (1263 symbols, 2127 relationships, 56 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **klipper_common_plugin** (1306 symbols, 2172 relationships, 53 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

@@ -49,6 +49,14 @@ def invalid_log_level(value: str) -> str:
     )
 
 
+def invalid_number(key: str, value) -> str:
+    return "klipper_common: invalid %s %r (need a number)" % (key, value)
+
+
+def invalid_int(key: str, value) -> str:
+    return "klipper_common: invalid %s %r (need an integer)" % (key, value)
+
+
 def invalid_min_nozzle_temp(value) -> str:
     return "klipper_common: invalid min_nozzle_temp %r (need a number)" % (value,)
 

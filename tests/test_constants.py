@@ -4,6 +4,8 @@ from klipper_common.constants import (
     LOG_LEVEL_INFO,
     LOG_LEVEL_VERBOSE,
     LOG_LEVEL_WARNING,
+    MIN_EXTRUDE_TEMP_HEAT_MARGIN,
+    heat_floor_from_min_extrude_temp,
     log_level_enabled,
 )
 from klipper_common.features import FEATURE_GCODES, FEATURE_KINDS, FEATURE_LOADERS
@@ -30,6 +32,12 @@ from klipper_common.features.wipe_nozzle_on_rubber import (
 def test_host_config_option_keys():
     assert CONFIG_OPTION_KEYS == frozenset(("log_level", "min_nozzle_temp"))
     assert "start_x" not in CONFIG_OPTION_KEYS
+
+
+def test_heat_floor_from_min_extrude_temp_adds_margin():
+    assert MIN_EXTRUDE_TEMP_HEAT_MARGIN == 5.0
+    assert heat_floor_from_min_extrude_temp(None) is None
+    assert heat_floor_from_min_extrude_temp(170.0) == 175.0
 
 
 def test_feature_registry():

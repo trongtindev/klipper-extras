@@ -6,7 +6,7 @@ Independent of [wipe on bed](wipe_nozzle_on_bed.md): this section’s coordinate
 
 Klipper has no wiper pose — do not infer XY from axis max / `safe_z_home`. Set `start_x`, `start_y`, `end_x`, `end_y` or connect fails.
 
-Resolution (user → Klipper hint → safe default): [configuration.md](../configuration.md). Comment template: [`config/sample-wipe-nozzle-on-rubber.cfg`](../../config/sample-wipe-nozzle-on-rubber.cfg). Owned keys: `features/wipe_nozzle_on_rubber/` `OPTION_KEYS`. Pad `start_*`/`end_*` are this feature’s box — not inferred from axis / mesh.
+Resolution (user → Klipper hint → safe default): [configuration.md](../configuration.md). When omitted, each key follows [Klipper sources](../configuration.md#klipper-sources). Comment template: [`config/sample-wipe-nozzle-on-rubber.cfg`](../../config/sample-wipe-nozzle-on-rubber.cfg). Owned keys: `features/wipe_nozzle_on_rubber/` `OPTION_KEYS`. Pad `start_*`/`end_*` are this feature’s box — not inferred from axis / mesh.
 
 ## Section
 
@@ -24,20 +24,20 @@ Use your pad pose, not the numbers above as a universal machine default.
 
 | Option | Type | Default | Notes |
 |--------|------|---------|--------|
-| `start_x` `start_y` `end_x` `end_y` | float | **required** | mm. Wiper pad. |
-| `wipe_z` | float | `0.0` | mm. Must be `>= 0`. |
-| `z_hop` | float | `safe_z_home` `z_hop` or `5` | mm. In-place lift before XY travel. Must be `>= 0`. |
-| `travel_z` | float | `5` | mm. XY travel height (must be `> wipe_z`). |
-| `wipe_speed` | float | `min(50, max_velocity)` | mm/s. `50` is the feature cap; `max_velocity` comes from `[printer]`. |
-| `travel_speed` | float | `max_velocity` | mm/s from toolhead / `[printer]`. Fallback `200` only if that field is missing. |
-| `passes` | int | `4` | `>= 1` |
-| `pass_offset` | float | `0` | mm, perpendicular to the wipe axis. `0`: space `passes` from start to end on the short axis so a rectangle uses both edges. Non-zero: `start + i × offset` (not clamped to the pad). |
-| `retract` | float | `0.5` or firmware retraction | mm; `0` skips |
-| `retract_speed` | float | `5` or firmware retraction | mm/s |
-| `min_nozzle_temp` | float | `[extruder] min_extrude_temp` if that key is set | If omitted and extruder has no `min_extrude_temp`, skip heat wait (console warning). Retract and fan still run. |
-| `nozzle_temperature` | float | omitted | If set: heat and wait. Else wait until current ≥ `min_nozzle_temp` when that floor is known. |
-| `fan_speed` | float | `1.0` | 0.0–1.0; restored after wipe |
-| `fan` | string | `fan` if that object exists, else skip | Missing user-named fan is a config error |
+| `start_x` `start_y` `end_x` `end_y` | float | **required** | mm. **No Klipper field** (not axis max / `safe_z_home`). Wiper pad. |
+| `wipe_z` | float | `0.0` | mm. **No Klipper field.** Must be `>= 0`. |
+| `z_hop` | float | `[safe_z_home] z_hop` if `> 0`, else `5` | mm. In-place lift. Must be `>= 0`. Not used as `travel_z`. Klipper default hop is `0` (ignored). |
+| `travel_z` | float | `5` | mm. **No Klipper field.** XY travel height (must be `> wipe_z`). |
+| `wipe_speed` | float | `min(50, [printer] max_velocity)` | mm/s. **No wipe-speed field** in Klipper; `50` is the feature cap. Set this key to override. Then capped at `max_velocity`. |
+| `travel_speed` | float | `[printer] max_velocity` | mm/s. Set this key to override. Then capped at `max_velocity`. Profile `200` only if that field is missing. |
+| `passes` | int | `4` | **No Klipper field.** `>= 1` |
+| `pass_offset` | float | `0` | mm, perpendicular. **No Klipper field.** `0`: space `passes` from start to end on the short axis so a rectangle uses both edges. Non-zero: `start + i × offset` (not clamped to the pad). |
+| `retract` | float | `[firmware_retraction] retract_length`, else `0.5` | mm; `0` skips |
+| `retract_speed` | float | `[firmware_retraction] retract_speed`, else `5` | mm/s. Klipper’s section default is `20` if that extra is loaded. |
+| `min_nozzle_temp` | float | `[extruder] min_extrude_temp` if that **key** is set, **+ 5 °C** | Do not use Klipper’s implicit `170`. The +5 °C is only for that hint (PID undershoot). User `min_nozzle_temp` / `nozzle_temperature` are not padded. If omitted and no key, skip heat wait (console warning). Retract and fan still run. |
+| `nozzle_temperature` | float | omitted | **No Klipper field.** If set: heat and wait. Else wait until current ≥ `min_nozzle_temp` when that floor is known. |
+| `fan_speed` | float | `1.0` | **No Klipper field.** 0.0–1.0; restored after wipe |
+| `fan` | string | `[fan]` if that object exists, else skip | Missing user-named fan is a config error |
 | `before_<action>_gcode` / `after_<action>_gcode` | G-code template | empty | Per-action hooks. Same action names as [wipe on bed](wipe_nozzle_on_bed.md#actions). [Command templates](https://www.klipper3d.org/Command_Templates.md). |
 | `on_hook_fail` | string | `stop` | `stop` \| `continue` for **this** section’s action hooks. |
 

@@ -3,14 +3,6 @@
 from __future__ import annotations
 
 
-def invalid_number(key: str, value) -> str:
-    return "klipper_common: invalid %s %r (need a number)" % (key, value)
-
-
-def invalid_int(key: str, value) -> str:
-    return "klipper_common: invalid %s %r (need an integer)" % (key, value)
-
-
 def xy_required(kind: str) -> str:
     return (
         "klipper_common: [%s] needs start_x, start_y, end_x, end_y "

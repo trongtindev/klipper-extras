@@ -17,7 +17,6 @@ from klipper_common.features.purge_motion.constants import (
     ORIGIN_FIXED,
 )
 from klipper_common.features.purge_motion.hints import (
-    _axis_limit,
     host_min_nozzle_temp_from_host,
 )
 from klipper_common.features.purge_motion.resolve import (
@@ -176,19 +175,6 @@ def test_travel_z_not_from_z_hop():
     assert s.travel_z > s.purge_z
 
 
-def test_axis_limit_reads_coord_attributes():
-    class Coord:
-        def __init__(self):
-            self.x = 0.0
-            self.y = 10.0
-
-    st = {"axis_minimum": Coord(), "axis_maximum": {"x": 220.0, "y": 220.0}}
-    assert _axis_limit(st, "axis_minimum", "x") == 0.0
-    assert _axis_limit(st, "axis_minimum", "y") == 10.0
-    assert _axis_limit(st, "axis_maximum", "x") == 220.0
-    assert _axis_limit(st, "missing", "x") is None
-
-
 def test_user_beats_hint_beats_profile():
     hints = PurgeKlipperHints(
         filament_diameter=1.75,
@@ -203,6 +189,9 @@ def test_user_beats_hint_beats_profile():
     s2 = _bed({}, hints)
     assert s2.min_nozzle_temp == 180.0
     assert s2.retract == 1.2
+    assert s2.travel_speed == 300.0
+    s_user_speed = _bed({"travel_speed": 150}, hints)
+    assert s_user_speed.travel_speed == 150.0
 
 
 def test_line_plan_has_one_purge_and_break():

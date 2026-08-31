@@ -8,6 +8,8 @@ User-facing strings stay in ``messages.py``.
 
 from __future__ import annotations
 
+from typing import Optional
+
 # Plugin identity (console banner, logs). Single source for packaging too
 # (pyproject.toml dynamic version → this attr). Bump here only.
 KLIPPER_COMMON_VERSION = "0.0.1"
@@ -40,6 +42,17 @@ CONFIG_SEVERITY_ERROR = "error"
 
 # Host [klipper_common] keys (docs/sample must stay a subset).
 CONFIG_OPTION_KEYS = frozenset(("log_level", "min_nozzle_temp"))
+
+# Extra °C when the heat floor is [extruder] min_extrude_temp (PID undershoot).
+# User min_nozzle_temp / nozzle_temperature are not padded.
+MIN_EXTRUDE_TEMP_HEAT_MARGIN = 5.0
+
+
+def heat_floor_from_min_extrude_temp(min_extrude: Optional[float]) -> Optional[float]:
+    """Hint floor: live min_extrude_temp plus PID margin, or None."""
+    if min_extrude is None:
+        return None
+    return float(min_extrude) + MIN_EXTRUDE_TEMP_HEAT_MARGIN
 
 
 def log_level_enabled(configured: str, wanted: str) -> bool:

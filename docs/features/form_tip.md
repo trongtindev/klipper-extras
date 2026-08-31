@@ -4,7 +4,7 @@ Enabled only by `[klipper_common form_tip]`. Registers **`FORM_TIP`**. Host `[kl
 
 Independent of [wipe on bed](wipe_nozzle_on_bed.md) and [wipe on rubber](wipe_nozzle_on_rubber.md). Motion is **extruder-only** (no XYZ movement). Geometry is set via `tip_distance` (total retract from nozzle) and `sep_fast_len` (fast retract portion).
 
-Resolution (user → profile → Klipper hint → safe default): [configuration.md](../configuration.md). Comment template: [`config/sample-form-tip.cfg`](../../config/sample-form-tip.cfg). Owned keys: `features/form_tip/` `OPTION_KEYS`.
+Resolution (user → Klipper hint → named profile / safe default): [configuration.md](../configuration.md). When omitted, each key follows [Klipper sources](../configuration.md#klipper-sources). Comment template: [`config/sample-form-tip.cfg`](../../config/sample-form-tip.cfg). Owned keys: `features/form_tip/` `OPTION_KEYS`. Named `profile` fills omitted keys; `fan` / `min_nozzle_temp` still take Klipper hints. E speeds are capped at `[extruder] max_extrude_only_velocity` (live `max_e_velocity`).
 
 ## Section
 
@@ -18,8 +18,8 @@ Omitted `profile` → all fields must be user-set (no safe default). Use `profil
 
 | Option | Type | Default | Notes |
 |--------|------|---------|--------|
-| `profile` | string | — | `a4t_hgx_lite` selects built-in profile. Omitting requires all fields below. |
-| `tip_distance` | float | `35.1` (profile) | **Required**. Total retract distance from nozzle in mm. |
+| `profile` | string | — | **No Klipper field.** `a4t_hgx_lite` selects built-in profile. Omitting requires all fields below. |
+| `tip_distance` | float | `35.1` (profile) | **No Klipper field. Required.** Total retract distance from nozzle in mm. |
 | `unloading_speed_start_len` | float | `0` | mm. Initial fast retract before separation. `0` = skip. |
 | `unloading_speed_start` | float | `80` | mm/s. Speed for initial fast retract. |
 | `ramming_len` | float | `0` | mm. Extrude into nozzle before retract. `0` = skip. |
@@ -39,12 +39,14 @@ Omitted `profile` → all fields must be user-set (no safe default). Use `profil
 | `pause_cool_ms` | int | `0` | ms. Dwell in cooling zone after skinnydip. |
 | `parking_distance` | float | `0` | mm. Final retract after tip forming. `0` = skip. |
 | `park_speed` | float | `25` | mm/s. |
-| `fan_speed` | float | `0` | 0.0–1.0. Fan assist during cooling. `0` = skip. |
-| `fan` | string | `fan` (if object exists) | Fan object name. |
-| `nozzle_temperature` | float | omitted | If set: heat and wait before tip forming. |
-| `min_nozzle_temp` | float | `[extruder] min_extrude_temp` if that key is set | If omitted and extruder has no `min_extrude_temp`, skip heat wait (console warning). |
+| `fan_speed` | float | `0` | **No Klipper field.** 0.0–1.0. Fan assist during cooling. `0` = skip. |
+| `fan` | string | `[fan]` if that object exists | Fan object name. |
+| `nozzle_temperature` | float | omitted | **No Klipper field.** If set: heat and wait before tip forming. |
+| `min_nozzle_temp` | float | `[extruder] min_extrude_temp` if that **key** is set, **+ 5 °C** | Do not use Klipper’s implicit `170`. The +5 °C is only for that hint (PID undershoot). User `min_nozzle_temp` / `nozzle_temperature` are not padded. If omitted and no key, skip heat wait (console warning). |
 | `before_<action>_gcode` / `after_<action>_gcode` | G-code template | empty | Per-action hooks. See **Algorithm**. [Command templates](https://www.klipper3d.org/Command_Templates.md). |
 | `on_hook_fail` | string | `stop` | `stop` \| `continue` for **this** section’s action hooks. |
+
+Lengths, counts, and E speeds in the table (except `fan` / `min_nozzle_temp`) have **no Klipper field**; named `profile` or user keys only. E speeds are then capped at `[extruder] max_extrude_only_velocity`.
 
 `sep_fast_len + unloading_speed_start_len` must be `<= tip_distance`. All speeds > 0. All lengths >= 0. `fan_speed` 0.0–1.0. `cooling_moves >= 0`. `cool_len > 0` when `cooling_moves > 0`. `dip_in > 0` when `use_skinnydip`.
 

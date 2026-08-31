@@ -2,6 +2,7 @@ import logging
 
 import pytest
 
+from klipper_common.constants import MIN_EXTRUDE_TEMP_HEAT_MARGIN
 from klipper_common.features.wipe_motion.constants import (
     CMD_ABSOLUTE,
     CMD_RESTORE_GCODE_STATE,
@@ -113,11 +114,11 @@ def test_bed_partial_user_xy_overlays_safe_strip():
     assert s.end_y == 12.0
 
 
-def test_travel_z_defaults_to_z_hop():
-    hints = WipeKlipperHints(z_hop=8.0)
+def test_travel_z_not_from_z_hop():
+    hints = WipeKlipperHints(z_hop=8.0, max_velocity=300.0)
     s = _bed({}, hints)
     assert s.z_hop == 8.0
-    assert s.travel_z == 8.0
+    assert s.travel_z == DEFAULT_TRAVEL_Z
 
     s_user = _bed({"z_hop": 3.0, "travel_z": 10.0}, hints)
     assert s_user.z_hop == 3.0
@@ -169,8 +170,19 @@ def test_speed_clamp_to_max_velocity():
     assert s.wipe_speed == 40.0
     s_user = _bed({"travel_speed": 30, "wipe_speed": 25}, slow)
     assert s_user.travel_speed == 30.0
+    assert s_user.wipe_speed == 25.0
     s_hi = _bed({"travel_speed": 80}, slow)
     assert s_hi.travel_speed == 40.0
+
+
+def test_travel_speed_from_printer_user_override():
+    fast = WipeKlipperHints(max_velocity=300.0)
+    s = _bed({}, fast)
+    assert s.travel_speed == 300.0
+    s_user = _bed({"travel_speed": 150}, fast)
+    assert s_user.travel_speed == 150.0
+    s_none = _bed({}, WipeKlipperHints())
+    assert s_none.travel_speed == 200.0
 
 
 def test_fan_hint_none_skips_fan():
@@ -332,27 +344,25 @@ class _FakePrinter:
 
 def test_hints_read_max_velocity_from_toolhead():
     class Toolhead:
-        max_velocity = 250.0
+        def get_max_velocity(self):
+            return 250.0, 3000.0
 
     hints = collect_wipe_hints(_FakePrinter({"toolhead": Toolhead()}))
     assert hints.max_velocity == 250.0
 
 
-class _FileConfig:
-    def __init__(self, present):
-        self.present = present
-
-    def has_option(self, section, option):
-        return (section, option) in self.present
+class _PrinterConfig:
+    def __init__(self, raw):
+        self.status_raw_config = raw
 
 
-class _Configfile:
-    def __init__(self, present):
-        self.fileconfig = _FileConfig(present)
+class _Heater:
+    min_extrude_temp = 190.0
 
 
 class _Extruder:
-    min_extrude_temp = 190.0
+    def get_heater(self):
+        return _Heater()
 
 
 def test_hints_z_hop_from_safe_z_home():
@@ -371,16 +381,18 @@ def test_hints_min_extrude_temp_only_if_in_config():
         _FakePrinter(
             {
                 "extruder": _Extruder(),
-                "configfile": _Configfile({("extruder", "min_extrude_temp")}),
+                "configfile": _PrinterConfig(
+                    {"extruder": {"min_extrude_temp": "190"}}
+                ),
             }
         )
     )
-    assert with_key.min_nozzle_temp == 190.0
+    assert with_key.min_nozzle_temp == 190.0 + MIN_EXTRUDE_TEMP_HEAT_MARGIN
     without_key = collect_wipe_hints(
         _FakePrinter(
             {
                 "extruder": _Extruder(),
-                "configfile": _Configfile(set()),
+                "configfile": _PrinterConfig({"extruder": {}}),
             }
         )
     )
@@ -415,6 +427,14 @@ class _FakeGcmd:
 
     def respond_info(self, text):
         return None
+
+
+class _FileConfig:
+    def __init__(self, present):
+        self.present = present
+
+    def has_option(self, section, option):
+        return (section, option) in self.present
 
 
 class _FakeConfig:

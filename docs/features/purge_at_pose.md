@@ -6,7 +6,7 @@ Enabled only by `[klipper_common purge_at_pose]`. Registers **`PURGE_AT_POSE`**.
 
 Independent of [purge on bed](purge_on_bed.md). Klipper has no purge-bucket pose — do not infer XY from axis max / `safe_z_home`. Set `start_x`, `start_y`, `purge_z` or connect fails.
 
-Resolution (user → Klipper hint → safe default): [configuration.md](../configuration.md). Comment template: [`config/sample-purge-at-pose.cfg`](../../config/sample-purge-at-pose.cfg). Owned keys: `features/purge_at_pose/` `OPTION_KEYS`.
+Resolution (user → Klipper hint → safe default): [configuration.md](../configuration.md). When omitted, each key follows [Klipper sources](../configuration.md#klipper-sources). Comment template: [`config/sample-purge-at-pose.cfg`](../../config/sample-purge-at-pose.cfg). Owned keys: `features/purge_at_pose/` `OPTION_KEYS`.
 
 ## Section
 
@@ -23,19 +23,19 @@ Use your chute / bucket / park pose, not the numbers above as a universal machin
 
 | Option | Type | Default | Notes |
 |--------|------|---------|--------|
-| `start_x` `start_y` `purge_z` | float | **required** | mm. Stand-still purge pose. `purge_z` must be `>= 0`. |
-| `purge_amount` | float | `10` | mm filament (E). `> 0`. |
-| `flow_rate` | float | `12` | mm³/s. `> 0`. E speed from `[extruder] filament_diameter`. |
-| `tip_distance` | float | `0` | mm E unretract before purge. `0` skips. |
-| `z_hop` | float | `safe_z_home` `z_hop` or `5` | mm. In-place lift before XY travel. Must be `>= 0`. Not used as `travel_z`. |
-| `travel_z` | float | `5` | mm. XY travel height (must be `> purge_z`). Profile `5` unless this key is set. |
-| `travel_speed` | float | `max_velocity` | mm/s from toolhead / `[printer]`. Profile `200` only if that field is missing. |
-| `retract` | float | `0.5` or firmware retraction | mm; `0` skips |
-| `retract_speed` | float | `5` or firmware retraction | mm/s |
-| `min_nozzle_temp` | float | see heat | Floor (°C). **Required** unless `nozzle_temperature` is set. Order: `[extruder] min_extrude_temp` < `[klipper_common] min_nozzle_temp` < this section. Do not invent `170`. |
-| `nozzle_temperature` | float | omitted | If set: `M109` to this value. Else `M109` to `min_nozzle_temp` when current is below it (or to the heater target if that is already ≥ the floor). |
-| `fan_speed` | float | `1.0` | 0.0–1.0; restored after purge |
-| `fan` | string | `fan` if that object exists, else skip | Missing user-named fan is a config error |
+| `start_x` `start_y` `purge_z` | float | **required** | mm. **No Klipper pose field.** Stand-still purge pose. `purge_z` must be `>= 0`. |
+| `purge_amount` | float | `10` | mm filament (E). **No Klipper field.** `> 0`. |
+| `flow_rate` | float | `12` | mm³/s. **No Klipper field.** E speed from `[extruder] filament_diameter` (live `filament_area`). Also capped at `[extruder] max_extrude_only_velocity` (`max_e_velocity`). |
+| `tip_distance` | float | `0` | mm E unretract. **No Klipper field.** `0` skips. |
+| `z_hop` | float | `[safe_z_home] z_hop` if `> 0`, else `5` | mm. Not used as `travel_z`. Klipper default hop is `0` (ignored). |
+| `travel_z` | float | `5` | mm. **No Klipper field.** Must be `> purge_z`. |
+| `travel_speed` | float | `[printer] max_velocity` | mm/s. Set this key to override. Then capped at `max_velocity`. Profile `200` only if that field is missing. |
+| `retract` | float | `[firmware_retraction] retract_length`, else `0.5` | mm; `0` skips |
+| `retract_speed` | float | `[firmware_retraction] retract_speed`, else `5` | mm/s |
+| `min_nozzle_temp` | float | see heat | Floor (°C). **Required** unless `nozzle_temperature` is set. Order: `[extruder] min_extrude_temp` (key present only) **+ 5 °C** < `[klipper_common] min_nozzle_temp` < this section. The +5 °C is only for the extruder hint (PID undershoot). User floors are not padded. Do not invent `170`. |
+| `nozzle_temperature` | float | omitted | **No Klipper field.** If set: `M109` to this value. Else `M109` to `min_nozzle_temp` when current is below it (or to the heater target if that is already ≥ the floor). |
+| `fan_speed` | float | `1.0` | **No Klipper field.** 0.0–1.0; restored after purge |
+| `fan` | string | `[fan]` if that object exists, else skip | Missing user-named fan is a config error |
 | `before_<action>_gcode` / `after_<action>_gcode` | G-code template | empty | Per-action hooks. See **Actions**. |
 | `on_hook_fail` | string | `stop` | `stop` \| `continue` |
 

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 
-from ... import messages as host_msg
+from ... import klipper_fields as kf, messages as host_msg
+from ...constants import heat_floor_from_min_extrude_temp
 from ..hook.execute import bind_hooked, call_common_hook
 from ..hook.load import load_action_hook_templates, load_on_hook_fail, parse_user_config
 from . import messages as msg
@@ -85,38 +86,13 @@ class FormTipRunner:
             )
 
     def _collect_hints(self) -> FormTipHints:
-        max_extrude_only_velocity = None
-        extruder = self.printer.lookup_object("extruder", None)
-        if extruder is not None:
-            try:
-                max_extrude_only_velocity = float(
-                    extruder.max_extrude_only_velocity
-                )
-            except Exception:
-                max_extrude_only_velocity = None
-        min_nozzle_temp = None
-        if extruder is not None and self._cfg_has("extruder", "min_extrude_temp"):
-            try:
-                min_nozzle_temp = float(extruder.min_extrude_temp)
-            except Exception:
-                min_nozzle_temp = None
-        fan = None
-        if self.printer.lookup_object("fan", None) is not None:
-            fan = "fan"
         return FormTipHints(
-            max_extrude_only_velocity=max_extrude_only_velocity,
-            min_nozzle_temp=min_nozzle_temp,
-            fan=fan,
+            max_extrude_only_velocity=kf.max_extrude_only_velocity(self.printer),
+            min_nozzle_temp=heat_floor_from_min_extrude_temp(
+                kf.min_extrude_temp(self.printer)
+            ),
+            fan=kf.default_fan(self.printer),
         )
-
-    def _cfg_has(self, section: str, option: str) -> bool:
-        try:
-            cf = self.printer.lookup_object("configfile", None)
-            if cf is None:
-                return False
-            return bool(cf.fileconfig.has_option(section, option))
-        except Exception:
-            return False
 
     def cmd_FORM_TIP(self, gcmd):
         s = self.settings
