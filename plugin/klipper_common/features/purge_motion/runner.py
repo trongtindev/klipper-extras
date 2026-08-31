@@ -15,6 +15,7 @@ from .constants import (
     CMD_RESTORE_GCODE_STATE,
     CMD_SAVE_GCODE_STATE,
     DEFAULT_FAN_OBJECT,
+    LEVELING_OBJECT_COMMANDS,
     ORIGIN_ADAPTIVE,
     PURGE_HOOK_ACTIONS,
 )
@@ -27,6 +28,18 @@ from .resolve import (
 )
 from .types import PurgeMove, PurgePathSettings
 from .validate import validate_path
+
+
+def unset_leveling_commands(printer, eventtime):
+    """G-code names of loaded QGL / Z_TILT_ADJUST extras that are not applied."""
+    missing = []
+    for obj_name, command in LEVELING_OBJECT_COMMANDS:
+        obj = printer.lookup_object(obj_name, None)
+        if obj is None:
+            continue
+        if not obj.get_status(eventtime).get("applied"):
+            missing.append(command)
+    return missing
 
 
 class PurgeRunner:
@@ -83,6 +96,10 @@ class PurgeRunner:
         homed = toolhead.get_status(eventtime).get("homed_axes", "")
         if not all(axis in homed for axis in "xyz"):
             raise gcmd.error(msg.not_homed())
+        for command in unset_leveling_commands(self.printer, eventtime):
+            text = msg.leveling_not_applied(command)
+            gcmd.respond_info(text)
+            logging.warning("%s", text)
         try:
             amount = gcmd.get_float("PURGE_AMOUNT", None)
             if amount is None:

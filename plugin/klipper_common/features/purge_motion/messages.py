@@ -123,6 +123,10 @@ def not_homed() -> str:
     return "klipper_common: XYZ must be homed before purge"
 
 
+def leveling_not_applied(command: str) -> str:
+    return "klipper_common: %s has not been applied" % (command,)
+
+
 def no_extruder() -> str:
     return "klipper_common: extruder not found (needed for purge temperature)"
 

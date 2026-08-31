@@ -1,3 +1,4 @@
+import logging
 import math
 import re
 from pathlib import Path
@@ -19,12 +20,17 @@ from klipper_common.features.purge_motion.constants import (
 from klipper_common.features.purge_motion.hints import (
     host_min_nozzle_temp_from_host,
 )
+from klipper_common.features.purge_motion.messages import leveling_not_applied
 from klipper_common.features.purge_motion.resolve import (
     e_speed_mms,
     heat_wait_target,
     overlay_purge_amount,
     plan_purge_actions,
     resolve_bed_origin,
+)
+from klipper_common.features.purge_motion.runner import (
+    PurgeRunner,
+    unset_leveling_commands,
 )
 from klipper_common.features.purge_motion.styles import VORON_STROKES, voron_strokes
 from klipper_common.features.purge_motion.types import PurgeKlipperHints
@@ -310,3 +316,179 @@ def test_sample_and_docs_keys_subset():
         assert not extra, "%s sample extra keys %s" % (kind, extra)
         doc_text = doc.read_text(encoding="utf-8")
         assert kind.replace("_", " ") in doc_text.lower() or kind in doc_text
+        assert "QUAD_GANTRY_LEVEL" in doc_text
+        assert "Z_TILT_ADJUST" in doc_text
+
+
+class _LevelObj:
+    def __init__(self, applied):
+        self.applied = applied
+
+    def get_status(self, eventtime):
+        return {"applied": self.applied}
+
+
+class _LookupPrinter:
+    def __init__(self, objects):
+        self._objects = objects
+
+    def lookup_object(self, name, default=None):
+        return self._objects.get(name, default)
+
+
+def test_unset_leveling_commands():
+    assert unset_leveling_commands(_LookupPrinter({}), 0.0) == []
+    assert (
+        unset_leveling_commands(
+            _LookupPrinter({"quad_gantry_level": _LevelObj(True)}), 0.0
+        )
+        == []
+    )
+    assert unset_leveling_commands(
+        _LookupPrinter({"quad_gantry_level": _LevelObj(False)}), 0.0
+    ) == ["QUAD_GANTRY_LEVEL"]
+    assert unset_leveling_commands(
+        _LookupPrinter({"z_tilt": _LevelObj(False)}), 0.0
+    ) == ["Z_TILT_ADJUST"]
+    assert unset_leveling_commands(
+        _LookupPrinter(
+            {
+                "quad_gantry_level": _LevelObj(False),
+                "z_tilt": _LevelObj(False),
+            }
+        ),
+        0.0,
+    ) == ["QUAD_GANTRY_LEVEL", "Z_TILT_ADJUST"]
+
+
+class _FakeReactor:
+    def monotonic(self):
+        return 0.0
+
+
+class _FakeGcode:
+    def __init__(self):
+        self.scripts = []
+
+    def register_command(self, name, func, desc=None):
+        return None
+
+    def run_script_from_command(self, script):
+        self.scripts.append(script)
+
+
+class _FakeToolhead:
+    def __init__(self, homed_axes="xyz"):
+        self.homed_axes = homed_axes
+
+    def get_status(self, eventtime):
+        return {"homed_axes": self.homed_axes}
+
+
+class _FakeGcmd:
+    def __init__(self):
+        self.infos = []
+
+    def error(self, text):
+        raise RuntimeError(text)
+
+    def respond_info(self, text):
+        self.infos.append(text)
+
+    def get_float(self, name, default=None):
+        return default
+
+
+class _FileConfig:
+    def __init__(self, present):
+        self.present = present
+
+    def has_option(self, section, option):
+        return (section, option) in self.present
+
+
+class _FakeConfig:
+    def __init__(self, printer):
+        self._printer = printer
+        self.fileconfig = _FileConfig(set())
+
+    def get_printer(self):
+        return self._printer
+
+    def get_name(self):
+        return "klipper_common purge_at_pose"
+
+
+class _PurgePrinter:
+    def __init__(self, gcode, extra=None, homed_axes="xyz"):
+        self._objects = {
+            "gcode": gcode,
+            "toolhead": _FakeToolhead(homed_axes),
+        }
+        if extra:
+            self._objects.update(extra)
+
+    def lookup_object(self, name, default=None):
+        return self._objects.get(name, default)
+
+    def get_reactor(self):
+        return _FakeReactor()
+
+    def register_event_handler(self, name, callback):
+        return None
+
+
+def _make_pose_runner(gcode=None, extra=None):
+    gcode = gcode or _FakeGcode()
+    printer = _PurgePrinter(gcode, extra=extra)
+    runner = PurgeRunner(_FakeConfig(printer), POSE_SPEC)
+    runner.settings = _pose({"retract": 0, "nozzle_temperature": 200})
+    return runner, gcode
+
+
+def test_cmd_purge_warns_when_qgl_not_applied(caplog):
+    runner, gcode = _make_pose_runner(
+        extra={"quad_gantry_level": _LevelObj(False)}
+    )
+    gcmd = _FakeGcmd()
+    with caplog.at_level(logging.WARNING):
+        runner.cmd_purge(gcmd)
+    text = leveling_not_applied("QUAD_GANTRY_LEVEL")
+    assert gcmd.infos == [text]
+    assert any(text in r.getMessage() for r in caplog.records)
+    assert gcode.scripts[0].startswith("SAVE_GCODE_STATE")
+
+
+def test_cmd_purge_warns_when_z_tilt_not_applied():
+    runner, gcode = _make_pose_runner(extra={"z_tilt": _LevelObj(False)})
+    gcmd = _FakeGcmd()
+    runner.cmd_purge(gcmd)
+    assert gcmd.infos == [leveling_not_applied("Z_TILT_ADJUST")]
+    assert gcode.scripts[0].startswith("SAVE_GCODE_STATE")
+
+
+def test_cmd_purge_no_warn_when_leveling_applied_or_absent():
+    runner, _gcode = _make_pose_runner()
+    gcmd = _FakeGcmd()
+    runner.cmd_purge(gcmd)
+    assert gcmd.infos == []
+    runner, _gcode = _make_pose_runner(
+        extra={"quad_gantry_level": _LevelObj(True)}
+    )
+    gcmd = _FakeGcmd()
+    runner.cmd_purge(gcmd)
+    assert gcmd.infos == []
+
+
+def test_cmd_purge_not_homed_skips_leveling_warn():
+    gcode = _FakeGcode()
+    printer = _PurgePrinter(
+        gcode, extra={"z_tilt": _LevelObj(False)}, homed_axes="xy"
+    )
+    runner = PurgeRunner(_FakeConfig(printer), POSE_SPEC)
+    runner.settings = _pose({"retract": 0, "nozzle_temperature": 200})
+    gcmd = _FakeGcmd()
+    with pytest.raises(RuntimeError, match="homed"):
+        runner.cmd_purge(gcmd)
+    assert gcmd.infos == []
+    assert gcode.scripts == []

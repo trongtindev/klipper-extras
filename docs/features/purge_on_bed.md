@@ -80,10 +80,11 @@ PURGE_ON_BED [PURGE_AMOUNT=<mm>] [PURGE_LENGTH=<mm>]
 
 `PURGE_LENGTH` is an alias for `PURGE_AMOUNT` (filament mm). Overlay one call; does not write the snapshot. Does not overlay XY or `style`.
 
-Call from `PRINT_START` **after XYZ are homed**. Saves `SAVE_GCODE_STATE NAME=PURGE_ON_BED` after homing (and adaptive origin), restores in `finally` (`MOVE=1`). Fan restored separately. Retract is not undone.
+Call from `PRINT_START` **after XYZ are homed**. If `[quad_gantry_level]` or `[z_tilt]` is loaded and has not been applied, a console warning is printed and purge continues (does not abort). Saves `SAVE_GCODE_STATE NAME=PURGE_ON_BED` after homing (and adaptive origin), restores in `finally` (`MOVE=1`). Fan restored separately. Retract is not undone.
 
 ```gcode
 G28
+; QUAD_GANTRY_LEVEL  or  Z_TILT_ADJUST  if that extra is loaded
 PURGE_ON_BED
 ; WIPE_NOZZLE_ON_BED
 ```

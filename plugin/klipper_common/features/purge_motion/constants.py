@@ -80,3 +80,9 @@ CMD_ABSOLUTE = "G90"
 CMD_EXTRUDE_REL = "M83"
 CMD_SAVE_GCODE_STATE = "SAVE_GCODE_STATE NAME=%s"
 CMD_RESTORE_GCODE_STATE = "RESTORE_GCODE_STATE NAME=%s MOVE=1 MOVE_SPEED=%.0f"
+
+# Klipper extras (object name, G-code). Warn at purge if loaded and not applied.
+LEVELING_OBJECT_COMMANDS = (
+    ("quad_gantry_level", "QUAD_GANTRY_LEVEL"),
+    ("z_tilt", "Z_TILT_ADJUST"),
+)

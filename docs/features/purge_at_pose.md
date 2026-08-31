@@ -57,7 +57,7 @@ No `style`, `purge_length`, `purge_margin`, `along`, or `style_size` on this sec
 | `retract` | `G1 E−retract` |
 | `lift` | lift to `travel_z` |
 
-No `break` / `recover`. Command wrap: [hook.md](hook.md). `SAVE_GCODE_STATE NAME=PURGE_AT_POSE` after homing; restore in `finally` (`MOVE=1`). Fan restored separately. Retract is not undone.
+No `break` / `recover`. Command wrap: [hook.md](hook.md). `SAVE_GCODE_STATE NAME=PURGE_AT_POSE` after homing; restore in `finally` (`MOVE=1`). Fan restored separately. Retract is not undone. If `[quad_gantry_level]` or `[z_tilt]` is loaded and has not been applied, a console warning is printed and purge continues (does not abort).
 
 ## G-code
 
@@ -68,6 +68,7 @@ PURGE_AT_POSE [PURGE_AMOUNT=<mm>] [PURGE_LENGTH=<mm>]
 `PURGE_LENGTH` aliases `PURGE_AMOUNT`. Overlay one call; does not write the snapshot. Does not overlay XY.
 
 ```gcode
+; QUAD_GANTRY_LEVEL  or  Z_TILT_ADJUST  if that extra is loaded
 PURGE_AT_POSE
 ; WIPE_NOZZLE_ON_RUBBER
 ```
