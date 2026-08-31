@@ -39,7 +39,7 @@ LOG_LEVEL_CHOICES = ", ".join(LOG_LEVEL_ORDER)
 CONFIG_SEVERITY_ERROR = "error"
 
 # Host [klipper_common] keys (docs/sample must stay a subset).
-CONFIG_OPTION_KEYS = frozenset(("log_level",))
+CONFIG_OPTION_KEYS = frozenset(("log_level", "min_nozzle_temp"))
 
 
 def log_level_enabled(configured: str, wanted: str) -> bool:

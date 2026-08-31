@@ -64,6 +64,8 @@ class KlipperCommon:
         user = {}
         if _config_has(config, "log_level"):
             user["log_level"] = config.get("log_level")
+        if _config_has(config, "min_nozzle_temp"):
+            user["min_nozzle_temp"] = config.get("min_nozzle_temp")
         return user
 
     def _handle_connect(self):
@@ -200,6 +202,9 @@ class KlipperCommon:
             "version": KLIPPER_COMMON_VERSION,
             "klipper_version": self._klipper_version,
             "log_level": self._configured_log_level(),
+            "min_nozzle_temp": (
+                None if self.settings is None else self.settings.min_nozzle_temp
+            ),
         }
         for kind in FEATURE_KINDS:
             status[kind] = self._prefix_loaded(kind)

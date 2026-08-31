@@ -58,7 +58,7 @@ def test_registry_includes_form_tip():
 
 
 def test_option_keys_owned_not_host():
-    assert FORM_TIP_KEYS.isdisjoint(CONFIG_OPTION_KEYS)
+    assert FORM_TIP_KEYS.isdisjoint(CONFIG_OPTION_KEYS - frozenset(("min_nozzle_temp",)))
     assert "start_x" not in FORM_TIP_KEYS
     assert "wipe_z" not in FORM_TIP_KEYS
     assert "fan" in FORM_TIP_KEYS

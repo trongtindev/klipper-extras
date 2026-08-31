@@ -49,6 +49,10 @@ def invalid_log_level(value: str) -> str:
     )
 
 
+def invalid_min_nozzle_temp(value) -> str:
+    return "klipper_common: invalid min_nozzle_temp %r (need a number)" % (value,)
+
+
 def config_validation_failed(errors: list[str]) -> str:
     return "klipper_common: config invalid:\n  %s" % ("\n  ".join(errors),)
 

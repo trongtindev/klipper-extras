@@ -15,6 +15,16 @@ from .hook import (
     KIND as HOOK_KIND,
     load_feature as load_hook,
 )
+from .purge_at_pose import (
+    GCODE as PURGE_POSE_GCODE,
+    KIND as PURGE_POSE_KIND,
+    load_feature as load_purge_at_pose,
+)
+from .purge_on_bed import (
+    GCODE as PURGE_BED_GCODE,
+    KIND as PURGE_BED_KIND,
+    load_feature as load_purge_on_bed,
+)
 from .wipe_nozzle_on_bed import (
     GCODE as BED_GCODE,
     KIND as BED_KIND,
@@ -31,6 +41,8 @@ FEATURE_LOADERS = {
     BED_KIND: load_wipe_nozzle_on_bed,
     FORM_TIP_KIND: load_form_tip,
     HOOK_KIND: load_hook,
+    PURGE_BED_KIND: load_purge_on_bed,
+    PURGE_POSE_KIND: load_purge_at_pose,
     RUBBER_KIND: load_wipe_nozzle_on_rubber,
 }
 
@@ -38,6 +50,8 @@ FEATURE_LOADERS = {
 FEATURE_GCODES = {
     BED_KIND: BED_GCODE,
     FORM_TIP_KIND: FORM_TIP_GCODE,
+    PURGE_BED_KIND: PURGE_BED_GCODE,
+    PURGE_POSE_KIND: PURGE_POSE_GCODE,
     RUBBER_KIND: RUBBER_GCODE,
 }
 

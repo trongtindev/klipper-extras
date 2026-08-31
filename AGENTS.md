@@ -8,10 +8,10 @@ Installer / Moonraker behavior follows [klicky-probe-plugin](https://github.com/
 
 ## Host vs feature ownership (do not stuff features into the host)
 
-- **Host** (`plugin/klipper_common/` root: `__init__.py`, `constants.py`, `defaults.py`, `config_validate.py`, `messages.py`, `klipper_version.py`): no feature option keys, no feature XY/Z/speed defaults, no feature G-code names.
+- **Host** (`plugin/klipper_common/` root: `__init__.py`, `constants.py`, `defaults.py`, `config_validate.py`, `messages.py`, `klipper_version.py`): no feature option keys, no feature XY/Z/speed defaults, no feature G-code names. `min_nozzle_temp` on `[klipper_common]` is a shared nozzle floor (not geometry); purge reads it. Wipe / form tip do not.
 - **Features** live under `plugin/klipper_common/features/<kind>/`. That package owns: `KIND`, `GCODE`, `OPTION_KEYS`, profile defaults, settings resolve, messages, `load_feature`.
 - Register a feature only in `features/__init__.py` (`FEATURE_LOADERS` / `FEATURE_GCODES`). Kinds without a command omit `FEATURE_GCODES`. Host `load_config_prefix` dispatches through that map — do not `if kind == …` in host modules.
-- Shared algorithms used by *related* features (e.g. wipe path planner) go in `features/<family>/` (today `features/wipe_motion/`), **not** in host files. A library is not a feature and has no config section.
+- Shared algorithms used by *related* features (e.g. wipe path planner, purge styles) go in `features/<family>/` (`wipe_motion/`, `purge_motion/`), **not** in host files. A library is not a feature and has no config section.
 - New feature → new package + registry entry + **`docs/features/<kind>.md`** + **`config/sample-<kind>.cfg`**. Never grow host `CONFIG_OPTION_KEYS` or dump feature options into host `docs/configuration.md` / `docs/gcodes.md`.
 
 ## Features run independently (no option / pose collision)
@@ -93,7 +93,7 @@ Do **not** invent config keys. Host keys: `CONFIG_OPTION_KEYS`. Each feature: it
 
 ### Safe defaults
 
-- Profile defaults must be conservative (`wipe_z >= 0`, speeds clamped to `max_velocity`). Use `[extruder] min_extrude_temp` only when that key is present in config; do not invent `170`. If absent (and no `min_nozzle_temp` / `nozzle_temperature`), skip heat wait and **warn on the console**. Extruder operations (retract, fan) are also skipped in that case.
+- Profile defaults must be conservative (`wipe_z >= 0`, speeds clamped to `max_velocity`). Use `[extruder] min_extrude_temp` only when that key is present in config; do not invent `170`. Wipe / form tip: if absent (and no `min_nozzle_temp` / `nozzle_temperature`), skip heat wait and **warn on the console**; extruder operations (retract, fan) are also skipped. **Purge must heat:** floor from `[extruder] min_extrude_temp` < `[klipper_common] min_nozzle_temp` < the purge section. Missing floor and `nozzle_temperature` is a config error (do not skip). At command, `M109` to `nozzle_temperature` or to the floor when the nozzle is colder (host floor is read from `[klipper_common]` config / `_user`, not only `host.settings` after connect).
 - Hints and profiles must not emit negative `wipe_z`. User may still be rejected by validation if unsafe.
 
 ## Source of truth
@@ -110,6 +110,9 @@ Do **not** invent config keys. Host keys: `CONFIG_OPTION_KEYS`. Each feature: it
 | Wipe motion library (planner, hints, runner, wipe action names) | `features/wipe_motion/` |
 | Bed wipe keys/defaults/G-code | `features/wipe_nozzle_on_bed/` |
 | Rubber wipe keys/defaults/G-code | `features/wipe_nozzle_on_rubber/` |
+| Purge motion library (planner, styles, hints, runner, purge action names) | `features/purge_motion/` |
+| Bed purge keys/defaults/G-code | `features/purge_on_bed/` |
+| Pose purge keys/defaults/G-code | `features/purge_at_pose/` |
 | Form tip keys/defaults/G-code | `features/form_tip/` |
 | Common command hooks (no G-code) | `features/hook/` |
 | Hook invoke (render/run, debug, command wrap) | `features/hook/execute.py` (`bind_hooked`, `run_hooked_action`, `call_common_hook`, `call_hook`) |
@@ -168,7 +171,7 @@ Prefer extending existing tests over ad-hoc scripts.
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **klipper_common_plugin** (911 symbols, 1552 relationships, 45 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **klipper_common_plugin** (1263 symbols, 2127 relationships, 56 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

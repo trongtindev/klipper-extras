@@ -23,6 +23,7 @@ Required. Common log/status surface.
 | Option | Type | Default | Notes |
 |--------|------|---------|--------|
 | `log_level` | string | `info` | `warning` \| `info` \| `verbose` \| `debug`. Gates ready banner. |
+| `min_nozzle_temp` | float | omitted | Optional nozzle floor (°C). [Purge](features/purge_on_bed.md) uses this between `[extruder] min_extrude_temp` and the purge section. Wipe / form tip do not read it. |
 
 ### `log_level`
 
@@ -44,6 +45,8 @@ Enabled by a documented `[klipper_common <kind>]` prefix. Without the section, t
 | Wipe nozzle on bed | [features/wipe_nozzle_on_bed.md](features/wipe_nozzle_on_bed.md) |
 | Wipe nozzle on rubber | [features/wipe_nozzle_on_rubber.md](features/wipe_nozzle_on_rubber.md) |
 | Form tip | [features/form_tip.md](features/form_tip.md) |
+| Purge on bed | [features/purge_on_bed.md](features/purge_on_bed.md) |
+| Purge at pose | [features/purge_at_pose.md](features/purge_at_pose.md) |
 | Common command hooks | [features/hook.md](features/hook.md) (no G-code; optional wrap) |
 
 ## Status (Moonraker / `printer.klipper_common`)
@@ -53,4 +56,5 @@ Enabled by a documented `[klipper_common <kind>]` prefix. Without the section, t
 | `version` | Plugin version (`KLIPPER_COMMON_VERSION`) |
 | `klipper_version` | Host `software_version` at connect |
 | `log_level` | Resolved `log_level` |
+| `min_nozzle_temp` | Host floor, or `null` if omitted |
 | *(feature kind)* | `true` when that prefix section is loaded (see the feature doc) |

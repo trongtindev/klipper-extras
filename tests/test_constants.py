@@ -12,6 +12,14 @@ from klipper_common.features.form_tip import (
     OPTION_KEYS as FORM_TIP_KEYS,
 )
 from klipper_common.features.hook import KIND as HOOK_KIND, OPTION_KEYS as HOOK_KEYS
+from klipper_common.features.purge_at_pose import (
+    KIND as PURGE_POSE_KIND,
+    OPTION_KEYS as PURGE_POSE_KEYS,
+)
+from klipper_common.features.purge_on_bed import (
+    KIND as PURGE_BED_KIND,
+    OPTION_KEYS as PURGE_BED_KEYS,
+)
 from klipper_common.features.wipe_nozzle_on_bed import KIND as BED_KIND, OPTION_KEYS as BED_KEYS
 from klipper_common.features.wipe_nozzle_on_rubber import (
     KIND as RUBBER_KIND,
@@ -20,15 +28,26 @@ from klipper_common.features.wipe_nozzle_on_rubber import (
 
 
 def test_host_config_option_keys():
-    assert CONFIG_OPTION_KEYS == frozenset(("log_level",))
+    assert CONFIG_OPTION_KEYS == frozenset(("log_level", "min_nozzle_temp"))
     assert "start_x" not in CONFIG_OPTION_KEYS
 
 
 def test_feature_registry():
-    assert FEATURE_KINDS == frozenset((BED_KIND, FORM_TIP_KIND, HOOK_KIND, RUBBER_KIND))
+    assert FEATURE_KINDS == frozenset(
+        (
+            BED_KIND,
+            FORM_TIP_KIND,
+            HOOK_KIND,
+            PURGE_BED_KIND,
+            PURGE_POSE_KIND,
+            RUBBER_KIND,
+        )
+    )
     assert set(FEATURE_LOADERS) == FEATURE_KINDS
     assert FEATURE_GCODES[BED_KIND] == "WIPE_NOZZLE_ON_BED"
     assert FEATURE_GCODES[FORM_TIP_KIND] == "FORM_TIP"
+    assert FEATURE_GCODES[PURGE_BED_KIND] == "PURGE_ON_BED"
+    assert FEATURE_GCODES[PURGE_POSE_KIND] == "PURGE_AT_POSE"
     assert FEATURE_GCODES[RUBBER_KIND] == "WIPE_NOZZLE_ON_RUBBER"
     assert HOOK_KIND not in FEATURE_GCODES
 
@@ -51,10 +70,29 @@ def test_feature_option_keys_are_owned_and_not_host():
     assert "edge" not in RUBBER_KEYS
     assert "tip_distance" in FORM_TIP_KEYS
     assert "profile" in FORM_TIP_KEYS
-    assert BED_KEYS.isdisjoint(CONFIG_OPTION_KEYS)
-    assert RUBBER_KEYS.isdisjoint(CONFIG_OPTION_KEYS)
-    assert FORM_TIP_KEYS.isdisjoint(CONFIG_OPTION_KEYS)
+    assert "style" in PURGE_BED_KEYS
+    assert "purge_length" in PURGE_BED_KEYS
+    assert "purge_margin" in PURGE_BED_KEYS
+    assert "along" in PURGE_BED_KEYS
+    assert "style_size" in PURGE_BED_KEYS
+    assert "end_x" not in PURGE_BED_KEYS
+    assert "style" not in PURGE_POSE_KEYS
+    assert "purge_length" not in PURGE_POSE_KEYS
+    assert "purge_margin" not in PURGE_POSE_KEYS
+    assert "along" not in PURGE_POSE_KEYS
+    assert "style_size" not in PURGE_POSE_KEYS
+    assert "start_x" in PURGE_POSE_KEYS
+    assert "before_purge_gcode" in PURGE_BED_KEYS
+    assert "before_purge_gcode" in PURGE_POSE_KEYS
+    host_only = CONFIG_OPTION_KEYS - frozenset(("min_nozzle_temp",))
+    assert BED_KEYS.isdisjoint(host_only)
+    assert RUBBER_KEYS.isdisjoint(host_only)
+    assert FORM_TIP_KEYS.isdisjoint(host_only)
     assert HOOK_KEYS.isdisjoint(CONFIG_OPTION_KEYS)
+    assert PURGE_BED_KEYS.isdisjoint(host_only)
+    assert PURGE_POSE_KEYS.isdisjoint(host_only)
+    assert "min_nozzle_temp" in PURGE_BED_KEYS
+    assert "min_nozzle_temp" in PURGE_POSE_KEYS
     assert "before_pass_gcode" in BED_KEYS
     assert "before_pass_gcode" in RUBBER_KEYS
     assert "before_cool_gcode" in FORM_TIP_KEYS
