@@ -5,9 +5,11 @@ from __future__ import annotations
 import logging
 
 from ... import klipper_fields as kf, messages as host_msg
+from ...components import ensure_feature_components
 from ...constants import heat_floor_from_min_extrude_temp
 from ..hook.execute import bind_hooked, call_common_hook
 from ..hook.load import load_action_hook_templates, load_on_hook_fail, parse_user_config
+from ..ui_macros import register_ui_macro_shims
 from . import messages as msg
 from .constants import (
     CMD_ABSOLUTE,
@@ -59,11 +61,7 @@ class FormTipRunner:
         )
 
     def _handle_connect(self):
-        host = self.printer.lookup_object("klipper_common", None)
-        if host is None:
-            raise self.printer.config_error(
-                host_msg.feature_requires_host(self.kind)
-            )
+        ensure_feature_components(self.printer, self.kind)
         hints = self._collect_hints()
         try:
             self.settings = resolve_tip_settings(
@@ -84,6 +82,7 @@ class FormTipRunner:
                     [e.message for e in result.errors]
                 )
             )
+        register_ui_macro_shims(self.printer, (self.gcode_name,))
 
     def _collect_hints(self) -> FormTipHints:
         return FormTipHints(

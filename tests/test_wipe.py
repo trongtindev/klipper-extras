@@ -20,6 +20,7 @@ from klipper_common.features.wipe_motion.types import WipeKlipperHints
 from klipper_common.features.wipe_motion.validate import validate_path
 from klipper_common.features.wipe_nozzle_on_bed.constants import (
     DEFAULT_PASS_OFFSET as BED_PASS_OFFSET,
+    DEFAULT_PASSES as BED_PASSES,
     DEFAULT_START_X as BED_START_X,
     DEFAULT_START_Y as BED_START_Y,
     DEFAULT_STRIP_LENGTH as BED_STRIP_LENGTH,
@@ -30,6 +31,7 @@ from klipper_common.features.wipe_nozzle_on_bed.constants import (
     SPEC as BED_SPEC,
 )
 from klipper_common.features.wipe_nozzle_on_rubber.constants import (
+    DEFAULT_PASSES as RUBBER_PASSES,
     DEFAULT_WIPE_SPEED as RUBBER_WIPE_SPEED,
     DEFAULT_WIPE_Z as RUBBER_WIPE_Z,
     GCODE as RUBBER_GCODE,
@@ -97,7 +99,12 @@ def test_bed_empty_is_horizontal_safe_strip():
     assert s.wipe_z == BED_WIPE_Z
     assert s.wipe_z == 0.1
     assert s.travel_z == DEFAULT_TRAVEL_Z
+    assert s.passes == BED_PASSES
+    assert s.passes == 1
     assert s.pass_offset == BED_PASS_OFFSET
+    wipes = [m for m in plan_wipe_moves(s) if m.kind == MOVE_WIPE]
+    assert len(wipes) == 2
+    assert all(m.y == BED_START_Y for m in wipes)
 
 
 def test_bed_wipe_length_sets_end_x():
@@ -246,8 +253,23 @@ def test_plan_wipe_actions_names():
     assert len(steps[3].moves) == 2
 
 
+def test_plan_wipe_actions_hold_z():
+    s = _rubber({"retract": 0, "passes": 2})
+    steps = plan_wipe_actions(s, hold_z=True)
+    assert [step.name for step in steps] == ["travel", "pass", "pass"]
+    assert all(move.z is None for step in steps for move in step.moves)
+    moves = plan_wipe_moves(s, hold_z=True)
+    assert moves[0].kind == MOVE_TRAVEL
+    assert moves[0].x == s.start_x and moves[0].y == s.start_y
+    assert moves[0].z is None
+    assert all(m.z is None for m in moves)
+    assert MOVE_LIFT not in [m.kind for m in moves]
+
+
 def test_plan_wipe_moves_along_x():
     s = _rubber()
+    assert s.passes == RUBBER_PASSES
+    assert s.passes == 2
     moves = plan_wipe_moves(s)
     assert moves[0].kind == MOVE_TRAVEL
     assert moves[0].x is None and moves[0].y is None
@@ -314,6 +336,7 @@ def test_same_geometry_same_plan():
         "start_x": 1,
         "start_y": 2,
         "wipe_z": 0.2,
+        "passes": 4,
         "pass_offset": 1,
         "wipe_speed": 80,
     }
@@ -337,6 +360,14 @@ class _FakePrinter:
 
     def lookup_object(self, name, default=None):
         return self._objects.get(name, default)
+
+    def lookup_objects(self, module=None):
+        return list(self._objects.items())
+
+    def add_object(self, name, obj):
+        if name in self._objects:
+            raise RuntimeError("Printer object '%s' already created" % (name,))
+        self._objects[name] = obj
 
     def get_reactor(self):
         return _FakeReactor()
@@ -449,23 +480,35 @@ class _FakeConfig:
         return "klipper_common wipe_nozzle_on_bed"
 
 
+class _FakePauseResume:
+    def __init__(self, is_paused):
+        self.is_paused = is_paused
+
+    def get_status(self, eventtime):
+        return {"is_paused": self.is_paused}
+
+
 class _WipePrinter(_FakePrinter):
-    def __init__(self, gcode, homed_axes="xyz"):
+    def __init__(self, gcode, homed_axes="xyz", is_paused=None):
         objects = {
             "gcode": gcode,
             "toolhead": _FakeToolhead(homed_axes),
         }
+        if is_paused is not None:
+            objects["pause_resume"] = _FakePauseResume(is_paused)
         super().__init__(objects)
 
     def register_event_handler(self, name, callback):
         return None
 
 
-def _make_runner(spec, settings, gcode=None):
+def _make_runner(spec, settings, gcode=None, is_paused=None, user=None):
     gcode = gcode or _FakeGcode()
-    printer = _WipePrinter(gcode)
+    printer = _WipePrinter(gcode, is_paused=is_paused)
     runner = WipeRunner(_FakeConfig(printer), spec)
     runner.settings = settings
+    if user is not None:
+        runner._user = user
     return runner, gcode
 
 
@@ -527,6 +570,47 @@ def test_cmd_wipe_not_homed_does_not_save():
     with pytest.raises(RuntimeError, match="homed"):
         runner.cmd_wipe(_FakeGcmd())
     assert gcode.scripts == []
+
+
+def test_cmd_wipe_bed_paused_does_not_save():
+    runner, gcode = _make_runner(BED_SPEC, _bed({"retract": 0}), is_paused=True)
+    with pytest.raises(RuntimeError, match="not allowed while paused"):
+        runner.cmd_wipe(_FakeGcmd())
+    assert gcode.scripts == []
+
+
+def test_cmd_wipe_rubber_paused_xy_only_holds_z():
+    s = _rubber({"retract": 0.5, "passes": 1, "nozzle_temperature": 220})
+    runner, gcode = _make_runner(RUBBER_SPEC, s, is_paused=True)
+    runner.cmd_wipe(_FakeGcmd())
+    save = CMD_SAVE_GCODE_STATE % (RUBBER_GCODE,)
+    restore = CMD_RESTORE_GCODE_STATE % (RUBBER_GCODE, s.travel_speed)
+    assert gcode.scripts[0] == save
+    assert gcode.scripts[-1] == restore
+    lift_z = "G1 Z%.3f F%.0f" % (s.z_hop, s.travel_speed * 60.0)
+    assert lift_z not in gcode.scripts
+    assert not any(script.startswith("G1 Z") for script in gcode.scripts)
+    assert any(script.startswith("G1 X") and "Z" not in script for script in gcode.scripts)
+    assert not any("G1 E" in script or script.startswith("M109") for script in gcode.scripts)
+
+
+@pytest.mark.parametrize("z_key", ("wipe_z", "z_hop", "travel_z"))
+def test_cmd_wipe_rubber_paused_with_user_z_errors(z_key):
+    s = _rubber({"retract": 0, z_key: 5})
+    runner, gcode = _make_runner(
+        RUBBER_SPEC, s, is_paused=True, user={z_key: "5"}
+    )
+    with pytest.raises(RuntimeError, match="with %s set" % (z_key,)):
+        runner.cmd_wipe(_FakeGcmd())
+    assert gcode.scripts == []
+
+
+def test_cmd_wipe_rubber_not_paused_moves_z():
+    s = _rubber({"retract": 0, "passes": 1})
+    runner, gcode = _make_runner(RUBBER_SPEC, s, is_paused=False)
+    runner.cmd_wipe(_FakeGcmd())
+    lift_z = "G1 Z%.3f F%.0f" % (s.z_hop, s.travel_speed * 60.0)
+    assert lift_z in gcode.scripts
 
 
 def test_cmd_wipe_restore_failure_does_not_hide_wipe_error():

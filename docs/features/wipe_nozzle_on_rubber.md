@@ -1,6 +1,6 @@
 # Wipe nozzle on rubber
 
-Enabled only by `[klipper_common wipe_nozzle_on_rubber]`. Registers **`WIPE_NOZZLE_ON_RUBBER`**. Host `[klipper_common]` is required.
+Enabled only by `[klipper_common wipe_nozzle_on_rubber]`. Registers **`WIPE_NOZZLE_ON_RUBBER`**. Host `[klipper_common]` is required. At connect, an empty `gcode_macro WIPE_NOZZLE_ON_RUBBER` printer object is added so Mainsail / Fluidd list the command (handler stays on `register_command`).
 
 Independent of [wipe on bed](wipe_nozzle_on_bed.md): this section’s coordinates are the **wiper pad**, not the bed strip. Strokes run along the longer axis; with `pass_offset` 0 they are spaced across the shorter axis so both pad edges are used. Both features may be loaded together.
 
@@ -30,7 +30,7 @@ Use your pad pose, not the numbers above as a universal machine default.
 | `travel_z` | float | `5` | mm. **No Klipper field.** XY travel height (must be `> wipe_z`). |
 | `wipe_speed` | float | `min(50, [printer] max_velocity)` | mm/s. **No wipe-speed field** in Klipper; `50` is the feature cap. Set this key to override. Then capped at `max_velocity`. |
 | `travel_speed` | float | `[printer] max_velocity` | mm/s. Set this key to override. Then capped at `max_velocity`. Profile `200` only if that field is missing. |
-| `passes` | int | `4` | **No Klipper field.** `>= 1` |
+| `passes` | int | `2` | **No Klipper field.** `>= 1` |
 | `pass_offset` | float | `0` | mm, perpendicular. **No Klipper field.** `0`: space `passes` from start to end on the short axis so a rectangle uses both edges. Non-zero: `start + i × offset` (not clamped to the pad). |
 | `retract` | float | `[firmware_retraction] retract_length`, else `0.5` | mm; `0` skips |
 | `retract_speed` | float | `[firmware_retraction] retract_speed`, else `5` | mm/s. Klipper’s section default is `20` if that extra is loaded. |
@@ -49,9 +49,11 @@ Command wrap (optional `[klipper_common hook]`): [hook.md](hook.md). Skipped wor
 
 `WIPE_NOZZLE_ON_RUBBER` — no parameters (geometry and speeds come from this section).
 
+If `[pause_resume]` reports paused: any of `wipe_z`, `z_hop`, `travel_z` **set on this section** is an error (Z would leave the pause height). With those keys omitted, wipe is XY at the current Z (no hop / lower / lift; restore does not lift to `z_hop`; no heat / retract / fan). That is only safe if current Z already clears the print — this plugin’s `PAUSE` hops; stock Klipper does not. Uncommenting `wipe_z` in the sample blocks pause. Printing (including `PRINT_START`) is allowed.
+
 Call from `PRINT_START` **after XYZ are homed**. Heat the nozzle first, or set `nozzle_temperature` here.
 
-Approach lifts to `travel_z` in place, then moves XY, then drops to `wipe_z`. Saves G-code state (`SAVE_GCODE_STATE NAME=WIPE_NOZZLE_ON_RUBBER`) after homing checks, before hooks and actions (including heat). Restores in `finally` (`RESTORE_GCODE_STATE NAME=WIPE_NOZZLE_ON_RUBBER MOVE=1`) so coordinate mode, speed override, and XYZ return to the pre-wipe values. Fan is restored separately. Retract is not undone.
+Approach lifts to `travel_z` in place, then moves XY, then drops to `wipe_z`. Saves G-code state (`SAVE_GCODE_STATE NAME=WIPE_NOZZLE_ON_RUBBER`) after homing checks, before hooks and actions (including heat). Restores in `finally` (`RESTORE_GCODE_STATE NAME=WIPE_NOZZLE_ON_RUBBER MOVE=1`) so coordinate mode, speed override, and XYZ return to the pre-wipe values. Fan is restored separately. Retract is not undone. While paused with Z keys omitted, approach/restore do not change Z, and heat / retract / fan are skipped.
 
 ```gcode
 G28

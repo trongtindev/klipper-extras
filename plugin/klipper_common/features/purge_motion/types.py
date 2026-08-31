@@ -98,6 +98,7 @@ class FeatureSpec:
     move_while_purge: bool
     require_pose: bool
     profile: PurgeKindProfile
+    paused_mode: str
 
     def resolve(self, user: dict, hints: Optional[PurgeKlipperHints]) -> PurgePathSettings:
         from .resolve import resolve_path_settings

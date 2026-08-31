@@ -22,7 +22,7 @@ from .constants import (
     ready_lines_for_log_level,
 )
 from .defaults import resolve_settings
-from .features import FEATURE_GCODES, FEATURE_KINDS, FEATURE_LOADERS
+from .features import FEATURE_KINDS, FEATURE_LOADERS, feature_gcode_names
 from .klipper_version import MIN_KLIPPER_VERSION, check_min_klipper_version
 
 
@@ -177,9 +177,7 @@ class KlipperCommon:
         for kind in sorted(FEATURE_KINDS):
             if not self._prefix_loaded(kind):
                 continue
-            gcode_name = FEATURE_GCODES.get(kind)
-            if gcode_name:
-                names.append(gcode_name)
+            names.extend(feature_gcode_names(kind))
         return names
 
     def cmd_COMMON_STATUS(self, gcmd):

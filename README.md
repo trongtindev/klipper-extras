@@ -2,15 +2,13 @@
 
 Klipper **Python extra** (`[klipper_common]`) — shared host for extras (version floor, log levels, status G-codes, optional wipe-nozzle features, Moonraker-aware installer).
 
-Installer layout follows [klicky-probe-plugin](https://github.com/trongtindev/klicky-probe-plugin).
-
 ## Software
 
 The extra lives under [`plugin/klipper_common/`](plugin/klipper_common).
 
 - Requires **Klipper ≥ v0.13.0** (checked at load)
 - Host section: `[klipper_common]`
-- Features (optional prefix sections): see [wipe on bed](docs/features/wipe_nozzle_on_bed.md), [wipe on rubber](docs/features/wipe_nozzle_on_rubber.md), [form tip](docs/features/form_tip.md), [purge on bed](docs/features/purge_on_bed.md), [purge at pose](docs/features/purge_at_pose.md), [command hooks](docs/features/hook.md)
+- Features (optional prefix sections): see [wipe on bed](docs/features/wipe_nozzle_on_bed.md), [wipe on rubber](docs/features/wipe_nozzle_on_rubber.md), [form tip](docs/features/form_tip.md), [purge on bed](docs/features/purge_on_bed.md), [purge at pose](docs/features/purge_at_pose.md), [pause / resume / cancel](docs/features/pause_resume.md), [command hooks](docs/features/hook.md)
 - G-codes: **`COMMON_STATUS`**, **`COMMON_VERSION`**; feature commands only when that section is present
 - Pure-logic unit tests (`pytest`)
 
@@ -34,7 +32,7 @@ Uninstall:
 
 Then add `[klipper_common]` to `printer.cfg` (see [`config/sample-klipper-common.cfg`](config/sample-klipper-common.cfg)).
 
-**Docs:** [Install](docs/install.md) · [Configuration](docs/configuration.md) · [G-codes](docs/gcodes.md) · [Wipe on bed](docs/features/wipe_nozzle_on_bed.md) · [Wipe on rubber](docs/features/wipe_nozzle_on_rubber.md) · [Form tip](docs/features/form_tip.md) · [Purge on bed](docs/features/purge_on_bed.md) · [Purge at pose](docs/features/purge_at_pose.md) · [Hooks](docs/features/hook.md)
+**Docs:** [Install](docs/install.md) · [Configuration](docs/configuration.md) · [G-codes](docs/gcodes.md) · [Wipe on bed](docs/features/wipe_nozzle_on_bed.md) · [Wipe on rubber](docs/features/wipe_nozzle_on_rubber.md) · [Form tip](docs/features/form_tip.md) · [Purge on bed](docs/features/purge_on_bed.md) · [Purge at pose](docs/features/purge_at_pose.md) · [Pause / resume](docs/features/pause_resume.md) · [Hooks](docs/features/hook.md)
 
 ### Tests
 
@@ -53,7 +51,7 @@ pytest tests/ -q
 # log_level: info
 ```
 
-Feature samples: [`config/sample-wipe-nozzle-on-bed.cfg`](config/sample-wipe-nozzle-on-bed.cfg), [`config/sample-wipe-nozzle-on-rubber.cfg`](config/sample-wipe-nozzle-on-rubber.cfg), [`config/sample-form-tip.cfg`](config/sample-form-tip.cfg), [`config/sample-hook.cfg`](config/sample-hook.cfg).
+Feature samples: [`config/sample-wipe-nozzle-on-bed.cfg`](config/sample-wipe-nozzle-on-bed.cfg), [`config/sample-wipe-nozzle-on-rubber.cfg`](config/sample-wipe-nozzle-on-rubber.cfg), [`config/sample-form-tip.cfg`](config/sample-form-tip.cfg), [`config/sample-pause-resume.cfg`](config/sample-pause-resume.cfg), [`config/sample-hook.cfg`](config/sample-hook.cfg).
 
 Verify after restart:
 

@@ -11,11 +11,15 @@ MOVE_LIFT = "lift"
 DEFAULT_TRAVEL_Z = 5.0
 DEFAULT_Z_HOP = 5.0
 DEFAULT_TRAVEL_SPEED = 200.0
-DEFAULT_PASSES = 4
 DEFAULT_RETRACT = 0.5
 DEFAULT_RETRACT_SPEED = 5.0
 DEFAULT_FAN_SPEED = 1.0
 DEFAULT_FAN_OBJECT = "fan"
+
+# Command-time pause (pause_resume.is_paused). Set on FeatureSpec.paused_mode.
+PAUSED_REFUSE = "refuse"
+PAUSED_HOLD_Z_IF_OMITTED = "hold_z_if_omitted"
+USER_Z_KEYS = ("wipe_z", "z_hop", "travel_z")
 
 # Named wipe actions. Each has before_<name>_gcode / after_<name>_gcode.
 WIPE_HOOK_ACTIONS = (

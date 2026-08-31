@@ -125,50 +125,67 @@ def _pass_perp_positions(
     return [start + i * step for i in range(passes)]
 
 
-def plan_wipe_moves(settings: WipePathSettings) -> list[WipeMove]:
-    """Lift Z in place, XY at travel_z, drop, N back-forth passes, lift. Speeds mm/s."""
+def plan_wipe_moves(
+    settings: WipePathSettings, hold_z: bool = False
+) -> list[WipeMove]:
+    """Lift Z in place, XY at travel_z, drop, N back-forth passes, lift. Speeds mm/s.
+
+    ``hold_z``: XY at current Z only (no hop, lower, or lift). Used while paused.
+    """
     s = settings
     dx = s.end_x - s.start_x
     dy = s.end_y - s.start_y
     along_x = abs(dx) >= abs(dy)
-    moves = [
-        WipeMove(None, None, s.z_hop, s.travel_speed, MOVE_TRAVEL),
-        WipeMove(s.start_x, s.start_y, s.travel_z, s.travel_speed, MOVE_TRAVEL),
-        WipeMove(s.start_x, s.start_y, s.wipe_z, s.travel_speed, MOVE_TRAVEL),
-    ]
+    wipe_z = None if hold_z else s.wipe_z
+    if hold_z:
+        moves = [
+            WipeMove(s.start_x, s.start_y, None, s.travel_speed, MOVE_TRAVEL),
+        ]
+    else:
+        moves = [
+            WipeMove(None, None, s.z_hop, s.travel_speed, MOVE_TRAVEL),
+            WipeMove(s.start_x, s.start_y, s.travel_z, s.travel_speed, MOVE_TRAVEL),
+            WipeMove(s.start_x, s.start_y, s.wipe_z, s.travel_speed, MOVE_TRAVEL),
+        ]
     if along_x:
         perps = _pass_perp_positions(s.passes, s.start_y, s.end_y, s.pass_offset)
         for i, y in enumerate(perps):
             x_start, x_end = (
                 (s.start_x, s.end_x) if i % 2 == 0 else (s.end_x, s.start_x)
             )
-            moves.append(WipeMove(x_start, y, s.wipe_z, s.wipe_speed, MOVE_WIPE))
-            moves.append(WipeMove(x_end, y, s.wipe_z, s.wipe_speed, MOVE_WIPE))
+            moves.append(WipeMove(x_start, y, wipe_z, s.wipe_speed, MOVE_WIPE))
+            moves.append(WipeMove(x_end, y, wipe_z, s.wipe_speed, MOVE_WIPE))
     else:
         perps = _pass_perp_positions(s.passes, s.start_x, s.end_x, s.pass_offset)
         for i, x in enumerate(perps):
             y_start, y_end = (
                 (s.start_y, s.end_y) if i % 2 == 0 else (s.end_y, s.start_y)
             )
-            moves.append(WipeMove(x, y_start, s.wipe_z, s.wipe_speed, MOVE_WIPE))
-            moves.append(WipeMove(x, y_end, s.wipe_z, s.wipe_speed, MOVE_WIPE))
-    last = moves[-1]
-    moves.append(WipeMove(last.x, last.y, s.travel_z, s.travel_speed, MOVE_LIFT))
+            moves.append(WipeMove(x, y_start, wipe_z, s.wipe_speed, MOVE_WIPE))
+            moves.append(WipeMove(x, y_end, wipe_z, s.wipe_speed, MOVE_WIPE))
+    if not hold_z:
+        last = moves[-1]
+        moves.append(WipeMove(last.x, last.y, s.travel_z, s.travel_speed, MOVE_LIFT))
     return moves
 
 
-def plan_wipe_actions(settings: WipePathSettings) -> list:
+def plan_wipe_actions(settings: WipePathSettings, hold_z: bool = False) -> list:
     """Group planned moves into named actions (z_hop, travel, lower, pass, lift)."""
-    moves = plan_wipe_moves(settings)
-    steps = [
-        WipeActionStep("z_hop", (moves[0],)),
-        WipeActionStep("travel", (moves[1],)),
-        WipeActionStep("lower", (moves[2],)),
-    ]
-    mid = moves[3:-1]
+    moves = plan_wipe_moves(settings, hold_z=hold_z)
+    if hold_z:
+        steps = [WipeActionStep("travel", (moves[0],))]
+        mid = moves[1:]
+    else:
+        steps = [
+            WipeActionStep("z_hop", (moves[0],)),
+            WipeActionStep("travel", (moves[1],)),
+            WipeActionStep("lower", (moves[2],)),
+        ]
+        mid = moves[3:-1]
     pass_index = 0
     for i in range(0, len(mid), 2):
         steps.append(WipeActionStep("pass", tuple(mid[i : i + 2]), pass_index=pass_index))
         pass_index += 1
-    steps.append(WipeActionStep("lift", (moves[-1],)))
+    if not hold_z:
+        steps.append(WipeActionStep("lift", (moves[-1],)))
     return steps

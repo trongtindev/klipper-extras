@@ -339,6 +339,14 @@ class _TipPrinter:
     def lookup_object(self, name, default=None):
         return self._objects.get(name, default)
 
+    def lookup_objects(self, module=None):
+        return list(self._objects.items())
+
+    def add_object(self, name, obj):
+        if name in self._objects:
+            raise RuntimeError("Printer object '%s' already created" % (name,))
+        self._objects[name] = obj
+
     def register_event_handler(self, name, callback):
         return None
 

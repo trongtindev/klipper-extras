@@ -1,6 +1,6 @@
 # Purge on bed
 
-Enabled only by `[klipper_common purge_on_bed]`. Registers **`PURGE_ON_BED`**. Host `[klipper_common]` is required.
+Enabled only by `[klipper_common purge_on_bed]`. Registers **`PURGE_ON_BED`**. Host `[klipper_common]` is required. At connect, an empty `gcode_macro PURGE_ON_BED` printer object is added so Mainsail / Fluidd list the command (handler stays on `register_command`).
 
 **Purge only** — extrudes a pattern on the bed. Does not wipe or clean the nozzle. Call [wipe on bed](wipe_nozzle_on_bed.md) afterwards if you want to scrape.
 
@@ -79,6 +79,8 @@ PURGE_ON_BED [PURGE_AMOUNT=<mm>] [PURGE_LENGTH=<mm>]
 ```
 
 `PURGE_LENGTH` is an alias for `PURGE_AMOUNT` (filament mm). Overlay one call; does not write the snapshot. Does not overlay XY or `style`.
+
+Errors if `[pause_resume]` reports paused (`is_paused`). Printing (including `PRINT_START`) is allowed.
 
 Call from `PRINT_START` **after XYZ are homed**. If `[quad_gantry_level]` or `[z_tilt]` is loaded and has not been applied, a console warning is printed and purge continues (does not abort). Saves `SAVE_GCODE_STATE NAME=PURGE_ON_BED` after homing (and adaptive origin), restores in `finally` (`MOVE=1`). Fan restored separately. Retract is not undone.
 

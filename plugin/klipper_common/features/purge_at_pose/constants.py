@@ -11,6 +11,7 @@ from ..purge_motion.constants import (
     DEFAULT_TIP_DISTANCE,
     DEFAULT_TRAVEL_SPEED,
     DEFAULT_TRAVEL_Z,
+    PAUSED_HOLD_Z,
     SHARED_OPTION_KEYS,
 )
 from ..purge_motion.types import FeatureSpec, PurgeKindProfile
@@ -41,4 +42,5 @@ SPEC = FeatureSpec(
     move_while_purge=False,
     require_pose=True,
     profile=PROFILE,
+    paused_mode=PAUSED_HOLD_Z,
 )

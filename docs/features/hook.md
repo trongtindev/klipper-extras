@@ -2,7 +2,7 @@
 
 Enabled only by `[klipper_common hook]`. **No G-code command.** Host `[klipper_common]` is required.
 
-Wraps each **action feature command** (wipe, form tip) as a whole. Per-action hooks (`before_pass_gcode`, …) live on that feature’s section — see [wipe on bed](wipe_nozzle_on_bed.md), [wipe on rubber](wipe_nozzle_on_rubber.md), [form tip](form_tip.md).
+Wraps each **action feature command** (wipe, form tip, purge, pause/resume/cancel) as a whole. Per-action hooks (`before_pass_gcode`, …) live on that feature’s section — see [wipe on bed](wipe_nozzle_on_bed.md), [wipe on rubber](wipe_nozzle_on_rubber.md), [form tip](form_tip.md). Pause/resume/cancel hooks are **per command** (`before_pause_gcode`, …) on [pause_resume](pause_resume.md), not per retract/park step.
 
 Templates are Klipper G-code macros ([Command templates](https://www.klipper3d.org/Command_Templates.md)). Loaded like `[probe] activate_gcode` (`gcode_macro.load_template`). Comment template: [`config/sample-hook.cfg`](../../config/sample-hook.cfg). Owned keys: `features/hook/` `OPTION_KEYS`.
 

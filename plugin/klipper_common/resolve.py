@@ -36,6 +36,23 @@ def as_int(raw, key: str) -> int:
     return int(value)
 
 
+def as_bool(raw, key: str) -> bool:
+    if isinstance(raw, bool):
+        return raw
+    text = str(raw).strip().lower()
+    if text in ("1", "true", "yes"):
+        return True
+    if text in ("0", "false", "no"):
+        return False
+    raise ValueError(msg.invalid_bool(key, raw))
+
+
+def pick_bool(user: dict, key: str, profile: bool) -> bool:
+    if present(user, key):
+        return as_bool(user[key], key)
+    return bool(profile)
+
+
 def pick_float(user: dict, key: str, hint: Optional[float], profile: float) -> float:
     """User key, else Klipper hint/calc, else that owner's profile default."""
     if present(user, key):

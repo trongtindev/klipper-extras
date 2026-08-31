@@ -30,5 +30,6 @@ COMMON_VERSION
 | `FORM_TIP` | [features/form_tip.md](features/form_tip.md) |
 | `PURGE_ON_BED` | [features/purge_on_bed.md](features/purge_on_bed.md) |
 | `PURGE_AT_POSE` | [features/purge_at_pose.md](features/purge_at_pose.md) |
+| `PAUSE` `RESUME` `CANCEL_PRINT` | [features/pause_resume.md](features/pause_resume.md) |
 
 `[klipper_common hook]` does not register a command. See [features/hook.md](features/hook.md).

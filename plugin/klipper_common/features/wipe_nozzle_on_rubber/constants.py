@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from ..wipe_motion.constants import (
     DEFAULT_FAN_SPEED,
-    DEFAULT_PASSES,
     DEFAULT_RETRACT,
     DEFAULT_RETRACT_SPEED,
     DEFAULT_TRAVEL_SPEED,
     DEFAULT_TRAVEL_Z,
+    PAUSED_HOLD_Z_IF_OMITTED,
     wipe_hook_option_keys,
 )
 from ..wipe_motion.types import FeatureSpec, WipeKindProfile
@@ -19,6 +19,7 @@ GCODE = "WIPE_NOZZLE_ON_RUBBER"
 
 DEFAULT_WIPE_Z = 0.0
 DEFAULT_WIPE_SPEED = 50.0
+DEFAULT_PASSES = 2
 DEFAULT_PASS_OFFSET = 0.0
 
 # Rubber-owned keys. Pad pose is this section's box; not inferred from Klipper.
@@ -63,4 +64,5 @@ SPEC = FeatureSpec(
     help_text=help_wipe_rubber(),
     derive_xy=False,
     profile=PROFILE,
+    paused_mode=PAUSED_HOLD_Z_IF_OMITTED,
 )

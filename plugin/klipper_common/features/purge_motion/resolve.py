@@ -41,19 +41,18 @@ from .types import (
 
 def heat_wait_target(
     nozzle_temperature: Optional[float],
-    min_nozzle_temp: Optional[float],
+    min_nozzle_temp: float,
     current: float,
     heater_target: float,
 ) -> Optional[float]:
     """M109 target °C, or None if already at the floor. Caller supplies a floor."""
     if nozzle_temperature is not None:
-        return float(nozzle_temperature)
-    minimum = float(min_nozzle_temp)
-    if current >= minimum:
+        return nozzle_temperature
+    if current >= min_nozzle_temp:
         return None
-    if heater_target >= minimum:
-        return float(heater_target)
-    return minimum
+    if heater_target >= min_nozzle_temp:
+        return heater_target
+    return min_nozzle_temp
 
 
 def _pick_min_nozzle_temp(user: dict, hints: PurgeKlipperHints) -> Optional[float]:
@@ -155,7 +154,10 @@ def resolve_path_settings(
             raise ValueError(msg.purge_z_required(kind))
         purge_z = as_float(user["purge_z"], "purge_z")
     else:
-        purge_z = pick_float(user, "purge_z", None, float(profile.purge_z))
+        default_z = profile.purge_z
+        if default_z is None:
+            raise ValueError(msg.purge_z_required(kind))
+        purge_z = pick_float(user, "purge_z", None, default_z)
     nozzle_temperature = None
     if present(user, "nozzle_temperature"):
         nozzle_temperature = as_float(user["nozzle_temperature"], "nozzle_temperature")
@@ -285,9 +287,15 @@ def _xyz(x, y, z, speed, kind, e=None) -> PurgeMove:
     return PurgeMove(x, y, z, e, speed, kind)
 
 
-def plan_purge_actions(settings: PurgePathSettings) -> list:
-    """Named actions after origin is resolved. Speeds mm/s."""
+def plan_purge_actions(settings: PurgePathSettings, hold_z: bool = False) -> list:
+    """Named actions after origin is resolved. Speeds mm/s.
+
+    ``hold_z``: XY / E at current Z only (no hop, lower, or lift). Pose purge
+    while paused. Bed purge must refuse pause at the command, not here.
+    """
     s = settings
+    if hold_z and s.move_while_purge:
+        raise ValueError(msg.not_allowed_while_paused(s.gcode))
     if s.start_x is None or s.start_y is None:
         raise ValueError(msg.origin_not_resolved())
     ox, oy = float(s.start_x), float(s.start_y)
@@ -297,26 +305,30 @@ def plan_purge_actions(settings: PurgePathSettings) -> list:
     if e_speed <= 0:
         raise ValueError(msg.speed_not_positive("flow_rate"))
     area = filament_area(s.filament_diameter)
-    steps = [
-        PurgeActionStep(
-            "z_hop",
-            (_xyz(None, None, s.z_hop, s.travel_speed, MOVE_TRAVEL),),
-        ),
-    ]
+    steps = []
+    if not hold_z:
+        steps.append(
+            PurgeActionStep(
+                "z_hop",
+                (_xyz(None, None, s.z_hop, s.travel_speed, MOVE_TRAVEL),),
+            )
+        )
     if not s.move_while_purge:
         _check_xy(s, ox, oy)
+        travel_z = None if hold_z else s.travel_z
         steps.append(
             PurgeActionStep(
                 "travel",
-                (_xyz(ox, oy, s.travel_z, s.travel_speed, MOVE_TRAVEL),),
+                (_xyz(ox, oy, travel_z, s.travel_speed, MOVE_TRAVEL),),
             )
         )
-        steps.append(
-            PurgeActionStep(
-                "lower",
-                (_xyz(ox, oy, s.purge_z, s.travel_speed, MOVE_TRAVEL),),
+        if not hold_z:
+            steps.append(
+                PurgeActionStep(
+                    "lower",
+                    (_xyz(ox, oy, s.purge_z, s.travel_speed, MOVE_TRAVEL),),
+                )
             )
-        )
         if s.tip_distance > 0:
             steps.append(
                 PurgeActionStep("tip", (_e_move(s.tip_distance, e_speed),))
@@ -335,12 +347,13 @@ def plan_purge_actions(settings: PurgePathSettings) -> list:
                     (_e_move(-s.retract, s.retract_speed),),
                 )
             )
-        steps.append(
-            PurgeActionStep(
-                "lift",
-                (_xyz(ox, oy, s.travel_z, s.travel_speed, MOVE_LIFT),),
+        if not hold_z:
+            steps.append(
+                PurgeActionStep(
+                    "lift",
+                    (_xyz(ox, oy, s.travel_z, s.travel_speed, MOVE_LIFT),),
+                )
             )
-        )
         return steps
 
     style = s.style or STYLE_LINE

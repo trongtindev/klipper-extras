@@ -7,6 +7,7 @@ from klipper_common.constants import (
 )
 from klipper_common.klipper_version import MIN_KLIPPER_VERSION
 from klipper_common.messages import (
+    components_required_missing,
     feature_requires_host,
     klipper_version_too_old,
     ready_banner,
@@ -61,3 +62,6 @@ def test_klipper_too_old_mentions_floor():
 def test_feature_host_messages():
     assert "foo" in unknown_feature_prefix("foo")
     assert "[klipper_common]" in feature_requires_host("wipe_nozzle_on_bed")
+    missing = components_required_missing("pause_resume", ["respond"])
+    assert "respond" in missing
+    assert "pause_resume" in missing

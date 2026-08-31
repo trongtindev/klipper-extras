@@ -6,8 +6,10 @@ import logging
 from dataclasses import replace as dataclass_replace
 
 from ... import messages as host_msg
+from ...components import ensure_feature_components
 from ..hook.execute import bind_hooked, call_common_hook
 from ..hook.load import load_action_hook_templates, load_on_hook_fail, parse_user_config
+from ..ui_macros import register_ui_macro_shims
 from . import messages as msg
 from .constants import (
     CMD_ABSOLUTE,
@@ -17,6 +19,8 @@ from .constants import (
     DEFAULT_FAN_OBJECT,
     LEVELING_OBJECT_COMMANDS,
     ORIGIN_ADAPTIVE,
+    PAUSED_HOLD_Z,
+    PAUSED_REFUSE,
     PURGE_HOOK_ACTIONS,
 )
 from .hints import collect_object_aabb, collect_purge_hints
@@ -68,9 +72,7 @@ class PurgeRunner:
         )
 
     def _handle_connect(self):
-        host = self.printer.lookup_object("klipper_common", None)
-        if host is None:
-            raise self.printer.config_error(host_msg.feature_requires_host(self.kind))
+        ensure_feature_components(self.printer, self.kind)
         hints = collect_purge_hints(self.printer)
         try:
             self.settings = self.spec.resolve(self._user, hints)
@@ -86,6 +88,7 @@ class PurgeRunner:
             raise self.printer.config_error(
                 host_msg.config_validation_failed([e.message for e in result.errors])
             )
+        register_ui_macro_shims(self.printer, (self.gcode_name,))
 
     def cmd_purge(self, gcmd):
         base = self.settings
@@ -96,6 +99,7 @@ class PurgeRunner:
         homed = toolhead.get_status(eventtime).get("homed_axes", "")
         if not all(axis in homed for axis in "xyz"):
             raise gcmd.error(msg.not_homed())
+        hold_z = self._paused_hold_z_or_error(gcmd)
         for command in unset_leveling_commands(self.printer, eventtime):
             text = msg.leveling_not_applied(command)
             gcmd.respond_info(text)
@@ -120,7 +124,7 @@ class PurgeRunner:
                 host_msg.config_validation_failed([e.message for e in result.errors])
             )
         try:
-            steps = plan_purge_actions(s)
+            steps = plan_purge_actions(s, hold_z=hold_z)
         except ValueError as e:
             raise gcmd.error(str(e)) from e
         prev_fan = self._fan_speed_now(eventtime, s)
@@ -148,7 +152,25 @@ class PurgeRunner:
         finally:
             if have_temp:
                 self._restore_fan(s, prev_fan)
-            self._restore_gcode_state(state_name, s)
+            self._restore_gcode_state(state_name, s, hold_z=hold_z)
+
+    def _is_paused(self) -> bool:
+        pause_resume = self.printer.lookup_object("pause_resume", None)
+        if pause_resume is None:
+            return False
+        eventtime = self.printer.get_reactor().monotonic()
+        return bool(pause_resume.get_status(eventtime).get("is_paused"))
+
+    def _paused_hold_z_or_error(self, gcmd) -> bool:
+        """False unless paused in hold-Z mode. Raises if this purge may not run."""
+        if not self._is_paused():
+            return False
+        mode = self.spec.paused_mode
+        if mode == PAUSED_REFUSE:
+            raise gcmd.error(msg.not_allowed_while_paused(self.gcode_name))
+        if mode == PAUSED_HOLD_Z:
+            return True
+        raise gcmd.error(msg.not_allowed_while_paused(self.gcode_name))
 
     def _emit_moves(self, moves) -> None:
         for move in moves:
@@ -157,14 +179,17 @@ class PurgeRunner:
     def _save_gcode_state(self, state_name: str) -> None:
         self.gcode.run_script_from_command(CMD_SAVE_GCODE_STATE % (state_name,))
 
-    def _restore_gcode_state(self, state_name: str, settings: PurgePathSettings) -> None:
-        try:
-            self.gcode.run_script_from_command(CMD_ABSOLUTE)
-            self.gcode.run_script_from_command(
-                "G1 Z%.3f F%.0f" % (settings.travel_z, settings.travel_speed * 60.0)
-            )
-        except Exception:
-            logging.warning("%s", msg.lift_before_restore_failed(), exc_info=True)
+    def _restore_gcode_state(
+        self, state_name: str, settings: PurgePathSettings, hold_z: bool = False
+    ) -> None:
+        if not hold_z:
+            try:
+                self.gcode.run_script_from_command(CMD_ABSOLUTE)
+                self.gcode.run_script_from_command(
+                    "G1 Z%.3f F%.0f" % (settings.travel_z, settings.travel_speed * 60.0)
+                )
+            except Exception:
+                logging.warning("%s", msg.lift_before_restore_failed(), exc_info=True)
         try:
             self.gcode.run_script_from_command(
                 CMD_RESTORE_GCODE_STATE % (state_name, settings.travel_speed)
@@ -177,18 +202,19 @@ class PurgeRunner:
             )
 
     def _wait_nozzle(self, gcmd, s: PurgePathSettings) -> bool:
-        if s.nozzle_temperature is None and s.min_nozzle_temp is None:
-            raise gcmd.error(msg.heat_temp_required(s.kind))
         if s.nozzle_temperature is not None:
             wait = s.nozzle_temperature
         else:
+            floor = s.min_nozzle_temp
+            if floor is None:
+                raise gcmd.error(msg.heat_temp_required(s.kind))
             extruder = self.printer.lookup_object("extruder", None)
             if extruder is None:
                 raise gcmd.error(msg.no_extruder())
             heater = extruder.get_heater()
             eventtime = self.printer.get_reactor().monotonic()
             current, target = heater.get_temp(eventtime)
-            wait = heat_wait_target(None, s.min_nozzle_temp, current, target)
+            wait = heat_wait_target(None, floor, current, target)
         if wait is not None:
             self.gcode.run_script_from_command("M109 S%.1f" % (wait,))
         return True

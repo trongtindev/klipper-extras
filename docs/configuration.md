@@ -22,12 +22,12 @@ Mapped to Klipper `klippy` (`toolhead.py`, `kinematics/extruder.py`, `extras/hea
 
 | Plugin option | Used by | When omitted | Klipper config | Live object (klippy) |
 |---------------|---------|--------------|----------------|----------------------|
-| `travel_speed` | wipe, purge | `[printer] max_velocity`; profile `200` only if missing | `[printer] max_velocity` (required) | `toolhead.get_max_velocity()[0]` |
+| `travel_speed` | wipe, purge, pause_resume | `[printer] max_velocity`; profile `200` only if missing | `[printer] max_velocity` (required) | `toolhead.get_max_velocity()[0]` |
 | `wipe_speed` | wipe | feature cap (`80` bed / `50` rubber), then cap at `max_velocity` | `[printer] max_velocity` (cap only) | `toolhead.get_max_velocity()[0]` (cap only) |
-| `z_hop` | wipe, purge | `[safe_z_home] z_hop` if `> 0`; else profile `5` | `[safe_z_home] z_hop` (default `0` = no hop) | `safe_z_home.z_hop` |
+| `z_hop` | wipe, purge, pause_resume | `[safe_z_home] z_hop` if `> 0`; else profile `5` | `[safe_z_home] z_hop` (default `0` = no hop) | `safe_z_home.z_hop` |
 | `travel_z` | wipe, purge | profile `5` | **none** — do not copy `z_hop` | — |
-| `retract` | wipe, purge | `[firmware_retraction] retract_length`; else `0.5` | `[firmware_retraction] retract_length` (default `0`) | `firmware_retraction.retract_length` |
-| `retract_speed` | wipe, purge | `[firmware_retraction] retract_speed`; else `5` | `[firmware_retraction] retract_speed` (default `20` if section exists) | `firmware_retraction.retract_speed` |
+| `retract` | wipe, purge, pause_resume | `[firmware_retraction] retract_length`; else `0.5` | `[firmware_retraction] retract_length` (default `0`) | `firmware_retraction.retract_length` |
+| `retract_speed` | wipe, purge, pause_resume | `[firmware_retraction] retract_speed`; else `5` | `[firmware_retraction] retract_speed` (default `20` if section exists) | `firmware_retraction.retract_speed` |
 | `min_nozzle_temp` | wipe, purge, form tip; purge also reads host | `[extruder] min_extrude_temp` **only if that key is in the file** (`PrinterConfig.status_raw_config`) **+ 5 °C** (PID margin); purge then `[klipper_common] min_nozzle_temp`. User `min_nozzle_temp` / `nozzle_temperature` are not padded | `[extruder] min_extrude_temp` (Klipper default `170` if omitted — **not used**) | `extruder.get_heater().min_extrude_temp` |
 | `nozzle_temperature` | wipe, purge, form tip | omitted (no heat-to target) | **none** | — |
 | `fan` | wipe, purge, form tip | object name `fan` if `[fan]` is loaded; else skip | `[fan]` | `lookup_object("fan")` |
@@ -38,7 +38,7 @@ Mapped to Klipper `klippy` (`toolhead.py`, `kinematics/extruder.py`, `extras/hea
 | axis box | purge (error, no clamp) | skip range check if missing | `[stepper_x]` / `[stepper_y]` `position_min` / `position_max` | `toolhead.get_status()` `axis_minimum` / `axis_maximum` (gcode.Coord `.x` / `.y`) |
 | `exclude_object` AABB | purge on bed adaptive origin | command error if no objects | `[exclude_object]` | `exclude_object.get_status()["objects"]` |
 
-No Klipper field (profile or **required** on that feature section): pose/`wipe_z`/`purge_z`/`wipe_length`/`passes`/`pass_offset`/`flow_rate`/`purge_amount`/`style`/`along`/`style_size`/`purge_margin`/`purge_length`/`tip_distance` and form-tip geometry/speeds (named `profile` fills those). `[printer] max_z_velocity` is not copied; Z hops use `travel_speed` and Klipper kinematics still apply `max_z_velocity` on the move.
+No Klipper field (profile or **required** on that feature section): pose/`wipe_z`/`purge_z`/`wipe_length`/`passes`/`pass_offset`/`flow_rate`/`purge_amount`/`style`/`along`/`style_size`/`purge_margin`/`purge_length`/`tip_distance` and form-tip geometry/speeds (named `profile` fills those). Pause `park_x`/`park_y` have no field (omit = no XY). `[printer] max_z_velocity` is not copied; Z hops use `travel_speed` (pause: `z_speed`) and Klipper kinematics still apply `max_z_velocity` on the move.
 
 Do not invent pose from axis max / `safe_z_home` `home_xy_position`.
 
@@ -66,6 +66,8 @@ Unknown values are a config error.
 
 Enabled by a documented `[klipper_common <kind>]` prefix. Without the section, that G-code is not registered. Features do not store options on `[klipper_common]`. Multiple features may be loaded at once; each has its own settings snapshot.
 
+Each feature declares Klipper extras (`REQUIRED_COMPONENTS` / `OPTIONAL_COMPONENTS`). Host `[klipper_common]` is always required. Missing **required** extras fail at `klippy:connect` (no auto-load, no fallback). Optional extras warn and stay `None`.
+
 | Feature | Doc |
 |---------|-----|
 | Wipe nozzle on bed | [features/wipe_nozzle_on_bed.md](features/wipe_nozzle_on_bed.md) |
@@ -73,6 +75,7 @@ Enabled by a documented `[klipper_common <kind>]` prefix. Without the section, t
 | Form tip | [features/form_tip.md](features/form_tip.md) |
 | Purge on bed | [features/purge_on_bed.md](features/purge_on_bed.md) |
 | Purge at pose | [features/purge_at_pose.md](features/purge_at_pose.md) |
+| Pause / resume / cancel | [features/pause_resume.md](features/pause_resume.md) (`PAUSE`, `RESUME`, `CANCEL_PRINT`; extras `virtual_sdcard`, `pause_resume`, `respond`) |
 | Common command hooks | [features/hook.md](features/hook.md) (no G-code; optional wrap) |
 
 ## Status (Moonraker / `printer.klipper_common`)

@@ -5,14 +5,20 @@ from __future__ import annotations
 import logging
 
 from ... import messages as host_msg
+from ...components import ensure_feature_components
+from ...resolve import present
 from ..hook.execute import bind_hooked, call_common_hook
 from ..hook.load import load_action_hook_templates, load_on_hook_fail, parse_user_config
+from ..ui_macros import register_ui_macro_shims
 from . import messages as msg
 from .constants import (
     CMD_ABSOLUTE,
     CMD_RESTORE_GCODE_STATE,
     CMD_SAVE_GCODE_STATE,
     DEFAULT_FAN_OBJECT,
+    PAUSED_HOLD_Z_IF_OMITTED,
+    PAUSED_REFUSE,
+    USER_Z_KEYS,
     WIPE_HOOK_ACTIONS,
 )
 from .hints import collect_wipe_hints
@@ -47,9 +53,7 @@ class WipeRunner:
         )
 
     def _handle_connect(self):
-        host = self.printer.lookup_object("klipper_common", None)
-        if host is None:
-            raise self.printer.config_error(host_msg.feature_requires_host(self.kind))
+        ensure_feature_components(self.printer, self.kind)
         hints = collect_wipe_hints(self.printer)
         try:
             self.settings = self.spec.resolve(self._user, hints)
@@ -65,6 +69,7 @@ class WipeRunner:
             raise self.printer.config_error(
                 host_msg.config_validation_failed([e.message for e in result.errors])
             )
+        register_ui_macro_shims(self.printer, (self.gcode_name,))
 
     def cmd_wipe(self, gcmd):
         s = self.settings
@@ -75,7 +80,8 @@ class WipeRunner:
         homed = toolhead.get_status(eventtime).get("homed_axes", "")
         if not all(axis in homed for axis in "xyz"):
             raise gcmd.error(msg.not_homed())
-        will_heat = not (
+        hold_z = self._paused_hold_z_or_error(gcmd)
+        will_heat = (not hold_z) and not (
             s.nozzle_temperature is None and s.min_nozzle_temp is None
         )
         prev_fan = self._fan_speed_now(eventtime) if will_heat else 0.0
@@ -86,10 +92,12 @@ class WipeRunner:
             extra_kind = {"kind": self.kind}
             call_common_hook(self.printer, "before", extra_kind)
             self.gcode.run_script_from_command(CMD_ABSOLUTE)
-            if will_heat:
-                have_temp = self._hooked("heat", lambda: self._wait_nozzle(gcmd))
+            if hold_z:
+                have_temp = False
+            elif will_heat:
+                have_temp = self._hooked("heat", lambda: self._wait_nozzle(gcmd, s))
             else:
-                have_temp = self._wait_nozzle(gcmd)
+                have_temp = self._wait_nozzle(gcmd, s)
             if have_temp and s.retract > 0:
                 self._hooked(
                     "retract",
@@ -100,7 +108,7 @@ class WipeRunner:
                 )
             if have_temp and s.fan is not None:
                 self._hooked("fan", lambda: self._set_fan(s.fan_speed))
-            for step in plan_wipe_actions(s):
+            for step in plan_wipe_actions(s, hold_z=hold_z):
                 extra = {}
                 if step.pass_index is not None:
                     extra["pass_index"] = step.pass_index
@@ -113,7 +121,33 @@ class WipeRunner:
         finally:
             if have_temp:
                 self._restore_fan(prev_fan)
-            self._restore_gcode_state(state_name, s)
+            self._restore_gcode_state(state_name, s, hold_z=hold_z)
+
+    def _is_paused(self) -> bool:
+        pause_resume = self.printer.lookup_object("pause_resume", None)
+        if pause_resume is None:
+            return False
+        eventtime = self.printer.get_reactor().monotonic()
+        return bool(pause_resume.get_status(eventtime).get("is_paused"))
+
+    def _user_z_keys(self):
+        return tuple(k for k in USER_Z_KEYS if present(self._user, k))
+
+    def _paused_hold_z_or_error(self, gcmd) -> bool:
+        """False unless paused in hold-Z mode. Raises if this wipe may not run."""
+        if not self._is_paused():
+            return False
+        mode = self.spec.paused_mode
+        if mode == PAUSED_REFUSE:
+            raise gcmd.error(msg.not_allowed_while_paused(self.gcode_name))
+        if mode == PAUSED_HOLD_Z_IF_OMITTED:
+            z_keys = self._user_z_keys()
+            if z_keys:
+                raise gcmd.error(
+                    msg.not_allowed_while_paused_with_z(self.gcode_name, z_keys)
+                )
+            return True
+        raise gcmd.error(msg.not_allowed_while_paused(self.gcode_name))
 
     def _emit_moves(self, moves) -> None:
         for move in moves:
@@ -122,15 +156,18 @@ class WipeRunner:
     def _save_gcode_state(self, state_name: str) -> None:
         self.gcode.run_script_from_command(CMD_SAVE_GCODE_STATE % (state_name,))
 
-    def _restore_gcode_state(self, state_name: str, settings: WipePathSettings) -> None:
+    def _restore_gcode_state(
+        self, state_name: str, settings: WipePathSettings, hold_z: bool = False
+    ) -> None:
         """Return XYZ and G-code mode to the snapshot. Fan is restored separately."""
-        try:
-            self.gcode.run_script_from_command(CMD_ABSOLUTE)
-            self.gcode.run_script_from_command(
-                "G1 Z%.3f F%.0f" % (settings.z_hop, settings.travel_speed * 60.0)
-            )
-        except Exception:
-            logging.warning("%s", msg.lift_before_restore_failed(), exc_info=True)
+        if not hold_z:
+            try:
+                self.gcode.run_script_from_command(CMD_ABSOLUTE)
+                self.gcode.run_script_from_command(
+                    "G1 Z%.3f F%.0f" % (settings.z_hop, settings.travel_speed * 60.0)
+                )
+            except Exception:
+                logging.warning("%s", msg.lift_before_restore_failed(), exc_info=True)
         try:
             self.gcode.run_script_from_command(
                 CMD_RESTORE_GCODE_STATE % (state_name, settings.travel_speed)
@@ -142,27 +179,26 @@ class WipeRunner:
                 exc_info=True,
             )
 
-    def _wait_nozzle(self, gcmd) -> bool:
+    def _wait_nozzle(self, gcmd, s: WipePathSettings) -> bool:
         """Return True if nozzle temperature was verified, False if skipped (no temp info).
 
         When neither nozzle_temperature nor min_nozzle_temp is available, the check
         is skipped and all extruder operations (retract, fan) are also skipped.
         """
-        s = self.settings
-        if s.nozzle_temperature is None and s.min_nozzle_temp is None:
-            gcmd.respond_info(msg.skip_nozzle_wait())
-            logging.warning("%s", msg.skip_nozzle_wait())
-            return False
         if s.nozzle_temperature is not None:
             self.gcode.run_script_from_command("M109 S%.1f" % (s.nozzle_temperature,))
             return True
+        minimum = s.min_nozzle_temp
+        if minimum is None:
+            gcmd.respond_info(msg.skip_nozzle_wait())
+            logging.warning("%s", msg.skip_nozzle_wait())
+            return False
         extruder = self.printer.lookup_object("extruder", None)
         if extruder is None:
             raise gcmd.error(msg.no_extruder())
         heater = extruder.get_heater()
         eventtime = self.printer.get_reactor().monotonic()
         current, target = heater.get_temp(eventtime)
-        minimum = s.min_nozzle_temp
         if current >= minimum:
             return True
         if target >= minimum:

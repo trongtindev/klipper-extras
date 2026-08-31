@@ -123,6 +123,10 @@ def not_homed() -> str:
     return "klipper_common: XYZ must be homed before purge"
 
 
+def not_allowed_while_paused(gcode_name: str) -> str:
+    return "klipper_common: %s is not allowed while paused" % (gcode_name,)
+
+
 def leveling_not_applied(command: str) -> str:
     return "klipper_common: %s has not been applied" % (command,)
 

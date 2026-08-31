@@ -1,6 +1,6 @@
 # Purge at pose
 
-Enabled only by `[klipper_common purge_at_pose]`. Registers **`PURGE_AT_POSE`**. Host `[klipper_common]` is required.
+Enabled only by `[klipper_common purge_at_pose]`. Registers **`PURGE_AT_POSE`**. Host `[klipper_common]` is required. At connect, an empty `gcode_macro PURGE_AT_POSE` printer object is added so Mainsail / Fluidd list the command (handler stays on `register_command`).
 
 **Purge only** — travels to a fixed XYZ then extrudes **in place** (no XY while purging). Does not wipe or clean. Call [wipe on rubber](wipe_nozzle_on_rubber.md) afterwards if you want to scrape a pad.
 
@@ -50,14 +50,16 @@ No `style`, `purge_length`, `purge_margin`, `along`, or `style_size` on this sec
 | `heat` | nozzle wait / `M109` |
 | `fan` | set fan speed |
 | `z_hop` | lift Z in place |
-| `travel` | XY at `travel_z` to the pose |
-| `lower` | drop to `purge_z` |
+| `travel` | XY at `travel_z` to the pose (XY only at current Z while paused) |
+| `lower` | drop to `purge_z` (skipped while paused) |
 | `tip` | unretract `tip_distance` (`0` skips) |
 | `purge` | `G1 E{purge_amount}` only |
 | `retract` | `G1 E−retract` |
 | `lift` | lift to `travel_z` |
 
 No `break` / `recover`. Command wrap: [hook.md](hook.md). `SAVE_GCODE_STATE NAME=PURGE_AT_POSE` after homing; restore in `finally` (`MOVE=1`). Fan restored separately. Retract is not undone. If `[quad_gantry_level]` or `[z_tilt]` is loaded and has not been applied, a console warning is printed and purge continues (does not abort).
+
+If `[pause_resume]` reports paused: XY travel to the pose at the **current Z** (no hop / lower / lift; restore does not lift to `travel_z`). Heat / fan / E (tip, purge, retract) still run. `purge_z` on this section is for non-paused use only. That is only safe if current Z already clears the print — this plugin’s `PAUSE` hops; stock Klipper does not. Printing (including `PRINT_START`) uses hop / `travel_z` / `purge_z` as usual.
 
 ## G-code
 

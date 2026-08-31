@@ -35,6 +35,10 @@ DEFAULT_BED_PURGE_AMOUNT = 30.0
 DEFAULT_POSE_PURGE_AMOUNT = 10.0
 BREAK_TRAVEL = 10.0
 
+# Command-time pause (pause_resume.is_paused). Set on FeatureSpec.paused_mode.
+PAUSED_REFUSE = "refuse"
+PAUSED_HOLD_Z = "hold_z"
+
 # Named purge actions. Each has before_<name>_gcode / after_<name>_gcode.
 PURGE_HOOK_ACTIONS = (
     "heat",

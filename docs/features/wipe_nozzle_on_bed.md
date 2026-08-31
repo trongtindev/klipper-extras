@@ -1,6 +1,6 @@
 # Wipe nozzle on bed
 
-Enabled only by `[klipper_common wipe_nozzle_on_bed]`. Registers **`WIPE_NOZZLE_ON_BED`**. Host `[klipper_common]` is required.
+Enabled only by `[klipper_common wipe_nozzle_on_bed]`. Registers **`WIPE_NOZZLE_ON_BED`**. Host `[klipper_common]` is required. At connect, an empty `gcode_macro WIPE_NOZZLE_ON_BED` printer object is added so Mainsail / Fluidd list the command (handler stays on `register_command`).
 
 Independent of [wipe on rubber](wipe_nozzle_on_rubber.md). Motion is a **horizontal** strip (same Y, back-and-forth on X). Approach lifts to `travel_z` in place, then moves XY, then drops to `wipe_z`. Geometry is not taken from `bed_mesh` or axis min/max.
 
@@ -25,8 +25,8 @@ Omitted XY → `(50, 50) ↔ (100, 50)` (50 mm along X).
 | `travel_z` | float | `5` | mm. **No Klipper field.** XY travel height (must be `> wipe_z`). |
 | `wipe_speed` | float | `min(80, [printer] max_velocity)` | mm/s. **No wipe-speed field** in Klipper; `80` is the feature cap. Set this key to override. Then capped at `max_velocity`. |
 | `travel_speed` | float | `[printer] max_velocity` | mm/s. Set this key to override. Then capped at `max_velocity`. Profile `200` only if that field is missing. |
-| `passes` | int | `4` | **No Klipper field.** `>= 1` |
-| `pass_offset` | float | `1` | mm, perpendicular (Y). **No Klipper field.** |
+| `passes` | int | `1` | **No Klipper field.** `>= 1`. Default is one Y row (back-and-forth on X). |
+| `pass_offset` | float | `1` | mm, perpendicular (Y). **No Klipper field.** Used when `passes` `> 1`. |
 | `retract` | float | `[firmware_retraction] retract_length`, else `0.5` | mm; `0` skips |
 | `retract_speed` | float | `[firmware_retraction] retract_speed`, else `5` | mm/s. Klipper’s section default is `20` if that extra is loaded. |
 | `min_nozzle_temp` | float | `[extruder] min_extrude_temp` if that **key** is set, **+ 5 °C** | Do not use Klipper’s implicit `170`. The +5 °C is only for that hint (PID undershoot). User `min_nozzle_temp` / `nozzle_temperature` are not padded. If omitted and no key, skip heat wait (console warning). Retract and fan still run. |
@@ -60,6 +60,8 @@ Unknown commands are not a hook failure. Use `{ action_raise_error('…') }` to 
 ## G-code
 
 `WIPE_NOZZLE_ON_BED` — no parameters (geometry and speeds come from this section).
+
+Errors if `[pause_resume]` reports paused (`is_paused`). Printing (including `PRINT_START` after a Moonraker/SD job start) is allowed.
 
 Call from `PRINT_START` **after XYZ are homed**. Heat the nozzle first, or set `nozzle_temperature` here.
 

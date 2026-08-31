@@ -14,6 +14,11 @@ from klipper_common.features.form_tip import (
     OPTION_KEYS as FORM_TIP_KEYS,
 )
 from klipper_common.features.hook import KIND as HOOK_KIND, OPTION_KEYS as HOOK_KEYS
+from klipper_common.features.pause_resume import (
+    KIND as PAUSE_KIND,
+    OPTION_KEYS as PAUSE_KEYS,
+    REQUIRED_COMPONENTS as PAUSE_REQUIRED,
+)
 from klipper_common.features.purge_at_pose import (
     KIND as PURGE_POSE_KIND,
     OPTION_KEYS as PURGE_POSE_KEYS,
@@ -46,6 +51,7 @@ def test_feature_registry():
             BED_KIND,
             FORM_TIP_KIND,
             HOOK_KIND,
+            PAUSE_KIND,
             PURGE_BED_KIND,
             PURGE_POSE_KIND,
             RUBBER_KIND,
@@ -57,7 +63,9 @@ def test_feature_registry():
     assert FEATURE_GCODES[PURGE_BED_KIND] == "PURGE_ON_BED"
     assert FEATURE_GCODES[PURGE_POSE_KIND] == "PURGE_AT_POSE"
     assert FEATURE_GCODES[RUBBER_KIND] == "WIPE_NOZZLE_ON_RUBBER"
+    assert FEATURE_GCODES[PAUSE_KIND] == ("PAUSE", "RESUME", "CANCEL_PRINT")
     assert HOOK_KIND not in FEATURE_GCODES
+    assert PAUSE_REQUIRED == ("virtual_sdcard", "pause_resume", "respond")
 
 
 def test_feature_option_keys_are_owned_and_not_host():
@@ -97,6 +105,12 @@ def test_feature_option_keys_are_owned_and_not_host():
     assert RUBBER_KEYS.isdisjoint(host_only)
     assert FORM_TIP_KEYS.isdisjoint(host_only)
     assert HOOK_KEYS.isdisjoint(CONFIG_OPTION_KEYS)
+    assert PAUSE_KEYS.isdisjoint(CONFIG_OPTION_KEYS)
+    assert "park_x" in PAUSE_KEYS
+    assert "before_pause_gcode" in PAUSE_KEYS
+    assert "before_resume_gcode" in PAUSE_KEYS
+    assert "before_cancel_gcode" in PAUSE_KEYS
+    assert "before_park_gcode" not in PAUSE_KEYS
     assert PURGE_BED_KEYS.isdisjoint(host_only)
     assert PURGE_POSE_KEYS.isdisjoint(host_only)
     assert "min_nozzle_temp" in PURGE_BED_KEYS

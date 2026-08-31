@@ -75,6 +75,7 @@ class FeatureSpec:
     help_text: str
     derive_xy: bool
     profile: WipeKindProfile
+    paused_mode: str
 
     def resolve(self, user: dict, hints: Optional[WipeKlipperHints]) -> WipePathSettings:
         from .resolve import resolve_path_settings

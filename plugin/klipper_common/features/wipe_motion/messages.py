@@ -50,6 +50,18 @@ def not_homed() -> str:
     return "klipper_common: XYZ must be homed before wipe"
 
 
+def not_allowed_while_paused(gcode_name: str) -> str:
+    return "klipper_common: %s is not allowed while paused" % (gcode_name,)
+
+
+def not_allowed_while_paused_with_z(gcode_name: str, z_keys) -> str:
+    return (
+        "klipper_common: %s is not allowed while paused with %s set "
+        "(omit wipe_z, z_hop, travel_z to wipe XY at current Z, or resume)"
+        % (gcode_name, ", ".join(z_keys))
+    )
+
+
 def nozzle_too_cold(current: float, minimum: float) -> str:
     return (
         "klipper_common: nozzle too cold (%.1fC, need >= %.1fC); "

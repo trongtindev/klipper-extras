@@ -3,8 +3,10 @@
 import pytest
 
 from klipper_common.resolve import (
+    as_bool,
     as_float,
     clamp_speed,
+    pick_bool,
     pick_float,
     pick_optional_str,
     pick_speed,
@@ -46,6 +48,14 @@ def test_as_float_rejects_bool():
 def test_clamp_speed_ignores_missing_max():
     assert clamp_speed(80.0, None) == 80.0
     assert clamp_speed(80.0, 0.0) == 80.0
+
+
+def test_pick_bool():
+    assert pick_bool({"park_at_cancel": True}, "park_at_cancel", False) is True
+    assert pick_bool({"park_at_cancel": "yes"}, "park_at_cancel", False) is True
+    assert pick_bool({}, "park_at_cancel", False) is False
+    with pytest.raises(ValueError, match="park_at_cancel"):
+        as_bool("maybe", "park_at_cancel")
 
 
 def test_pick_optional_str_fan():

@@ -53,6 +53,7 @@ Two layers. **The feature that owns the action owns that layer’s hook keys, te
 | Parse section keys | `hook/load.py` `parse_user_config` (skips `*_gcode` / `on_hook_fail`) | Copy `config_has` + skip-hook-key loops into each feature |
 | Feature hook option keys | `hook/policy.py` `hook_option_keys_for_actions(THAT_FEATURE_ACTIONS)` unioned into that feature’s `OPTION_KEYS` | Hand-roll `before_%s_gcode` loops; add `debug` or `command_*_gcode` to a wipe/form_tip section |
 | `debug` console log | `[klipper_common hook]` `debug` only (no section → no debug). `call_hook` logs **every** invoke, including empty templates (`(empty)`) | A second debug flag on another section; skip empty templates in the debug log; `print()` / extra `respond_info` at call sites |
+| Mainsail/Fluidd list extra G-codes | `features/ui_macros.py` `register_ui_macro_shims` at `klippy:connect` | Copy `UiMacroShim` / `add_object("gcode_macro …")` into a feature; register in `__init__` (short-circuits a real `[gcode_macro NAME]`) |
 
 New action → add the name to that feature’s `*_HOOK_ACTIONS` tuple, one `self._hooked(...)` call site (`bind_hooked` in `__init__`), docs + sample. Do not add hook option keys by hand.
 
@@ -122,6 +123,7 @@ Do **not** invent config keys. Host keys: `CONFIG_OPTION_KEYS`. Each feature: it
 | Hook invoke (render/run, debug, command wrap) | `features/hook/execute.py` (`bind_hooked`, `run_hooked_action`, `call_common_hook`, `call_hook`) |
 | Hook load (templates, `parse_user_config`, `on_hook_fail`, `debug`) | `features/hook/load.py` |
 | Hook key helper / `on_hook_fail` resolve | `features/hook/policy.py` (`hook_option_keys_for_actions`) |
+| Mainsail/Fluidd gcode_macro status objects | `features/ui_macros.py` (`register_ui_macro_shims`) |
 | Host option reference | `docs/configuration.md` |
 | Host G-codes | `docs/gcodes.md` |
 | Feature option + G-code reference | `docs/features/<kind>.md` |
@@ -184,7 +186,7 @@ Prefer extending existing tests over ad-hoc scripts.
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **klipper_common_plugin** (1306 symbols, 2172 relationships, 53 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **klipper_common_plugin** (1684 symbols, 2937 relationships, 94 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

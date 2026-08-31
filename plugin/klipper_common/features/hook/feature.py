@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ... import messages as host_msg
+from ...components import ensure_feature_components
 from .constants import (
     HOOK_ACTION_COMMAND,
     HOOK_PHASE_AFTER,
@@ -28,9 +28,7 @@ class CommonHook:
         self.printer.register_event_handler("klippy:connect", self._handle_connect)
 
     def _handle_connect(self):
-        host = self.printer.lookup_object("klipper_common", None)
-        if host is None:
-            raise self.printer.config_error(host_msg.feature_requires_host(self.kind))
+        ensure_feature_components(self.printer, self.kind)
 
     def run_command_before(self, extra=None) -> None:
         extra = extra or {}

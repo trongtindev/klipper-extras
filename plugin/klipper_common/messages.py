@@ -107,3 +107,18 @@ def unknown_feature_prefix(name: str) -> str:
 
 def feature_requires_host(kind: str) -> str:
     return "klipper_common: [klipper_common] is required to enable [%s]" % (kind,)
+
+
+def invalid_bool(key: str, value) -> str:
+    return "klipper_common: invalid %s %r (need true/false or 0/1)" % (key, value)
+
+
+def components_required_missing(kind: str, names) -> str:
+    return "klipper_common: [%s] requires Klipper extra(s) %s (missing)" % (
+        kind,
+        ", ".join(names),
+    )
+
+
+def component_optional_missing(kind: str, name: str) -> str:
+    return "klipper_common: [%s] optional extra %s is not loaded" % (kind, name)

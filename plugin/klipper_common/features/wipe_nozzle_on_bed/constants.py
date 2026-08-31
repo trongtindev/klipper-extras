@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from ..wipe_motion.constants import (
     DEFAULT_FAN_SPEED,
-    DEFAULT_PASSES,
     DEFAULT_RETRACT,
     DEFAULT_RETRACT_SPEED,
     DEFAULT_TRAVEL_SPEED,
     DEFAULT_TRAVEL_Z,
+    PAUSED_REFUSE,
     wipe_hook_option_keys,
 )
 from ..wipe_motion.types import FeatureSpec, WipeKindProfile
@@ -19,6 +19,7 @@ GCODE = "WIPE_NOZZLE_ON_BED"
 
 DEFAULT_WIPE_Z = 0.1
 DEFAULT_WIPE_SPEED = 80.0
+DEFAULT_PASSES = 1
 DEFAULT_PASS_OFFSET = 1.0
 DEFAULT_START_X = 50.0
 DEFAULT_START_Y = 50.0
@@ -68,4 +69,5 @@ SPEC = FeatureSpec(
     help_text=help_wipe_bed(),
     derive_xy=True,
     profile=PROFILE,
+    paused_mode=PAUSED_REFUSE,
 )

@@ -16,6 +16,8 @@ from klipper_common.features.purge_motion.constants import (
     DEFAULT_TRAVEL_Z,
     ORIGIN_ADAPTIVE,
     ORIGIN_FIXED,
+    PAUSED_HOLD_Z,
+    PAUSED_REFUSE,
 )
 from klipper_common.features.purge_motion.hints import (
     host_min_nozzle_temp_from_host,
@@ -70,6 +72,8 @@ def test_gcode_and_kind_owned():
     assert PURGE_BED_SPEC.gcode == PURGE_BED_GCODE
     assert POSE_SPEC.gcode == POSE_GCODE
     assert PURGE_BED_SPEC.gcode != POSE_SPEC.gcode
+    assert PURGE_BED_SPEC.paused_mode == PAUSED_REFUSE
+    assert POSE_SPEC.paused_mode == PAUSED_HOLD_Z
 
 
 def test_filament_diameter_required():
@@ -247,6 +251,8 @@ def test_pose_plan_e_only_no_break():
     s = _pose()
     steps = plan_purge_actions(s)
     names = _names(steps)
+    assert names[:3] == ["z_hop", "travel", "lower"]
+    assert names[-1] == "lift"
     assert "break" not in names
     assert "recover" not in names
     purge = next(st for st in steps if st.name == "purge")
@@ -254,6 +260,24 @@ def test_pose_plan_e_only_no_break():
     assert move.x is None
     assert move.y is None
     assert move.e == pytest.approx(s.purge_amount)
+    travel = next(st for st in steps if st.name == "travel")
+    assert travel.moves[0].z == s.travel_z
+
+
+def test_pose_plan_hold_z():
+    s = _pose({"retract": 0, "tip_distance": 0})
+    steps = plan_purge_actions(s, hold_z=True)
+    assert _names(steps) == ["travel", "purge"]
+    travel = steps[0].moves[0]
+    assert travel.x == s.start_x and travel.y == s.start_y
+    assert travel.z is None
+    assert all(move.z is None for step in steps for move in step.moves)
+
+
+def test_bed_plan_hold_z_errors():
+    s = _bed({"start_x": 10, "start_y": 20, "retract": 0})
+    with pytest.raises(ValueError, match="not allowed while paused"):
+        plan_purge_actions(s, hold_z=True)
 
 
 def test_e_speed_from_diameter_not_kamp_div5():
@@ -419,17 +443,35 @@ class _FakeConfig:
         return "klipper_common purge_at_pose"
 
 
+class _FakePauseResume:
+    def __init__(self, is_paused):
+        self.is_paused = is_paused
+
+    def get_status(self, eventtime):
+        return {"is_paused": self.is_paused}
+
+
 class _PurgePrinter:
-    def __init__(self, gcode, extra=None, homed_axes="xyz"):
+    def __init__(self, gcode, extra=None, homed_axes="xyz", is_paused=None):
         self._objects = {
             "gcode": gcode,
             "toolhead": _FakeToolhead(homed_axes),
         }
         if extra:
             self._objects.update(extra)
+        if is_paused is not None:
+            self._objects["pause_resume"] = _FakePauseResume(is_paused)
 
     def lookup_object(self, name, default=None):
         return self._objects.get(name, default)
+
+    def lookup_objects(self, module=None):
+        return list(self._objects.items())
+
+    def add_object(self, name, obj):
+        if name in self._objects:
+            raise RuntimeError("Printer object '%s' already created" % (name,))
+        self._objects[name] = obj
 
     def get_reactor(self):
         return _FakeReactor()
@@ -438,11 +480,27 @@ class _PurgePrinter:
         return None
 
 
-def _make_pose_runner(gcode=None, extra=None):
+def _make_pose_runner(gcode=None, extra=None, is_paused=None):
     gcode = gcode or _FakeGcode()
-    printer = _PurgePrinter(gcode, extra=extra)
+    printer = _PurgePrinter(gcode, extra=extra, is_paused=is_paused)
     runner = PurgeRunner(_FakeConfig(printer), POSE_SPEC)
     runner.settings = _pose({"retract": 0, "nozzle_temperature": 200})
+    return runner, gcode
+
+
+def _make_bed_runner(gcode=None, extra=None, is_paused=None):
+    gcode = gcode or _FakeGcode()
+    printer = _PurgePrinter(gcode, extra=extra, is_paused=is_paused)
+    runner = PurgeRunner(_FakeConfig(printer), PURGE_BED_SPEC)
+    runner.settings = _bed(
+        {
+            "start_x": 10,
+            "start_y": 20,
+            "retract": 0,
+            "min_nozzle_temp": 180,
+            "nozzle_temperature": 200,
+        }
+    )
     return runner, gcode
 
 
@@ -492,3 +550,31 @@ def test_cmd_purge_not_homed_skips_leveling_warn():
         runner.cmd_purge(gcmd)
     assert gcmd.infos == []
     assert gcode.scripts == []
+
+
+def test_cmd_purge_bed_paused_does_not_save():
+    runner, gcode = _make_bed_runner(is_paused=True)
+    with pytest.raises(RuntimeError, match="not allowed while paused"):
+        runner.cmd_purge(_FakeGcmd())
+    assert gcode.scripts == []
+
+
+def test_cmd_purge_pose_paused_holds_z():
+    runner, gcode = _make_pose_runner(is_paused=True)
+    s = runner.settings
+    runner.cmd_purge(_FakeGcmd())
+    lift_z = "G1 Z%.3f F%.0f" % (s.travel_z, s.travel_speed * 60.0)
+    assert lift_z not in gcode.scripts
+    assert not any(script.startswith("G1 Z") for script in gcode.scripts)
+    assert any(script.startswith("G1 X") and "Z" not in script for script in gcode.scripts)
+    assert any(script.startswith("M109") for script in gcode.scripts)
+    assert gcode.scripts[0].startswith("SAVE_GCODE_STATE")
+    assert "MOVE=1" in gcode.scripts[-1]
+
+
+def test_cmd_purge_pose_not_paused_moves_z():
+    runner, gcode = _make_pose_runner(is_paused=False)
+    s = runner.settings
+    runner.cmd_purge(_FakeGcmd())
+    lift_z = "G1 Z%.3f F%.0f" % (s.travel_z, s.travel_speed * 60.0)
+    assert lift_z in gcode.scripts
