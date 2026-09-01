@@ -115,8 +115,10 @@ def test_feature_option_keys_are_owned_and_not_host():
     assert PURGE_POSE_KEYS.isdisjoint(host_only)
     assert "min_nozzle_temp" in PURGE_BED_KEYS
     assert "min_nozzle_temp" in PURGE_POSE_KEYS
-    assert "before_pass_gcode" in BED_KEYS
-    assert "before_pass_gcode" in RUBBER_KEYS
+    assert "before_pass_gcode" not in BED_KEYS
+    assert "before_pass_gcode" not in RUBBER_KEYS
+    assert "on_hook_fail" not in BED_KEYS
+    assert "on_hook_fail" not in RUBBER_KEYS
     assert "before_cool_gcode" in FORM_TIP_KEYS
     assert "command_before_gcode" in HOOK_KEYS
     assert "debug" in HOOK_KEYS

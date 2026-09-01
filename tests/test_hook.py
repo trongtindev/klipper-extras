@@ -32,7 +32,6 @@ from klipper_extras.features.hook.policy import (
     is_hook_config_key,
     resolve_on_hook_fail,
 )
-from klipper_extras.features.wipe_motion.constants import WIPE_HOOK_ACTIONS
 from klipper_extras.features.wipe_nozzle_on_bed import OPTION_KEYS as BED_KEYS
 from klipper_extras.features.wipe_nozzle_on_rubber import OPTION_KEYS as RUBBER_KEYS
 
@@ -119,21 +118,19 @@ def test_hook_option_keys_for_actions():
     )
 
 
-def test_wipe_and_form_tip_own_hook_keys():
-    for action in WIPE_HOOK_ACTIONS:
-        before = "before_%s_gcode" % (action,)
-        after = "after_%s_gcode" % (action,)
-        assert before in BED_KEYS
-        assert after in BED_KEYS
-        assert before in RUBBER_KEYS
-        assert after in RUBBER_KEYS
-    assert "on_hook_fail" in BED_KEYS
-    assert "on_hook_fail" in RUBBER_KEYS
+def test_wipe_has_no_action_hook_keys():
+    assert "on_hook_fail" not in BED_KEYS
+    assert "on_hook_fail" not in RUBBER_KEYS
+    assert "before_pass_gcode" not in BED_KEYS
+    assert "before_pass_gcode" not in RUBBER_KEYS
+    assert "command_before_gcode" not in BED_KEYS
+
+
+def test_form_tip_owns_hook_keys():
     for action in FORM_TIP_HOOK_ACTIONS:
         assert "before_%s_gcode" % (action,) in FORM_TIP_KEYS
         assert "after_%s_gcode" % (action,) in FORM_TIP_KEYS
     assert "on_hook_fail" in FORM_TIP_KEYS
-    assert "command_before_gcode" not in BED_KEYS
     assert "command_before_gcode" not in FORM_TIP_KEYS
 
 

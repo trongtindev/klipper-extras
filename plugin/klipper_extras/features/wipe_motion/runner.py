@@ -7,8 +7,8 @@ import logging
 from ... import messages as host_msg
 from ...components import ensure_feature_components
 from ...resolve import present
-from ..hook.execute import bind_hooked, call_common_hook
-from ..hook.load import load_action_hook_templates, load_on_hook_fail, parse_user_config
+from ..hook.execute import call_common_hook
+from ..hook.load import parse_user_config
 from ..ui_macros import register_ui_macro_shims
 from . import messages as msg
 from .constants import (
@@ -19,10 +19,9 @@ from .constants import (
     PAUSED_HOLD_Z_IF_OMITTED,
     PAUSED_REFUSE,
     USER_Z_KEYS,
-    WIPE_HOOK_ACTIONS,
 )
 from .hints import collect_wipe_hints
-from .resolve import plan_wipe_actions
+from .resolve import plan_wipe_moves
 from .types import WipeMove, WipePathSettings
 from .validate import validate_path
 
@@ -38,13 +37,6 @@ class WipeRunner:
         self.gcode_name = spec.gcode
         self._user = parse_user_config(config, spec.option_keys)
         self.settings = None
-        self._hook_templates = load_action_hook_templates(
-            config, self.printer, WIPE_HOOK_ACTIONS
-        )
-        self._on_hook_fail = load_on_hook_fail(config)
-        self._hooked = bind_hooked(
-            self.printer, self._hook_templates, self._on_hook_fail, self.kind
-        )
         self.printer.register_event_handler("klippy:connect", self._handle_connect)
         self.gcode.register_command(
             self.gcode_name,
@@ -94,29 +86,16 @@ class WipeRunner:
             self.gcode.run_script_from_command(CMD_ABSOLUTE)
             if hold_z:
                 have_temp = False
-            elif will_heat:
-                have_temp = self._hooked("heat", lambda: self._wait_nozzle(gcmd, s))
             else:
                 have_temp = self._wait_nozzle(gcmd, s)
             if have_temp and s.retract > 0:
-                self._hooked(
-                    "retract",
-                    lambda: self.gcode.run_script_from_command(
-                        "G91\nG1 E%.3f F%.0f\nG90"
-                        % (-s.retract, s.retract_speed * 60.0)
-                    ),
+                self.gcode.run_script_from_command(
+                    "G91\nG1 E%.3f F%.0f\nG90"
+                    % (-s.retract, s.retract_speed * 60.0)
                 )
             if have_temp and s.fan is not None:
-                self._hooked("fan", lambda: self._set_fan(s.fan_speed))
-            for step in plan_wipe_actions(s, hold_z=hold_z):
-                extra = {}
-                if step.pass_index is not None:
-                    extra["pass_index"] = step.pass_index
-                self._hooked(
-                    step.name,
-                    lambda moves=step.moves: self._emit_moves(moves),
-                    extra,
-                )
+                self._set_fan(s.fan_speed)
+            self._emit_moves(plan_wipe_moves(s, hold_z=hold_z))
             call_common_hook(self.printer, "after", extra_kind)
         finally:
             if have_temp:

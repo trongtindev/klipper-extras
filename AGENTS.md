@@ -34,12 +34,14 @@ Any feature command that issues motion or changes G-code mode (G90/G91, F, retra
 
 ## Feature hooks (before / after each action)
 
-Every **action** in an action feature (not only the G-code command) must have before and after hook **call sites**. Empty Klipper G-code template = no-op. Skipped work (retract `0`, no heat, …) skips that action’s hooks. Host-only commands do not.
+Features that own named actions (`FORM_TIP_HOOK_ACTIONS`, `PURGE_HOOK_ACTIONS`, `PAUSE_RESUME_HOOK_ACTIONS`) must have before and after hook **call sites** for each. Empty Klipper G-code template = no-op. Skipped work (retract `0`, no heat, …) skips that action’s hooks. Host-only commands do not.
+
+**Wipe** has no per-action hooks. Wrap is only `[klipper_extras hook]` (`call_common_hook`). Do not add `before_*_gcode` / `on_hook_fail` on wipe sections.
 
 Two layers. **The feature that owns the action owns that layer’s hook keys, templates, call sites, docs, sample.** Do not import `hook.OPTION_KEYS` into another feature (`debug` / `command_*_gcode` live only on `[klipper_extras hook]`). Do not put hook keys on `[klipper_extras]`.
 
 - **Common** `[klipper_extras hook]` (optional): `command_before_gcode` / `command_after_gcode` / `on_hook_fail` / `debug`. No G-code command. Other extras `lookup_object("klipper_extras hook", None)` — do not read that section’s keys.
-- **Feature**: `before_<action>_gcode` / `after_<action>_gcode` / `on_hook_fail` on **that** section. Wipe action names live in `wipe_motion` (`WIPE_HOOK_ACTIONS`). Form tip names live in `form_tip` (`FORM_TIP_HOOK_ACTIONS`).
+- **Feature**: `before_<action>_gcode` / `after_<action>_gcode` / `on_hook_fail` on **that** section. Form tip names live in `form_tip` (`FORM_TIP_HOOK_ACTIONS`). Purge names live in `purge_motion` (`PURGE_HOOK_ACTIONS`). Pause/resume/cancel are per command on `pause_resume` (`PAUSE_RESUME_HOOK_ACTIONS`).
 
 ### One implementation — do not copy
 
@@ -49,11 +51,11 @@ Two layers. **The feature that owns the action owns that layer’s hook keys, te
 | Command wrap | `call_common_hook(printer, "before"\|"after", {"kind": self.kind})` | `lookup_object("klipper_extras hook")` then call templates yourself |
 | Load templates | `hook/load.py` `load_action_hook_templates` in extra `__init__` | Stuff templates into `WipePathSettings` / `FormTipSettings`; `config.get` then `run_script` later |
 | Parse section keys | `hook/load.py` `parse_user_config` (skips `*_gcode` / `on_hook_fail`) | Copy `config_has` + skip-hook-key loops into each feature |
-| Feature hook option keys | `hook/policy.py` `hook_option_keys_for_actions(THAT_FEATURE_ACTIONS)` unioned into that feature’s `OPTION_KEYS` | Hand-roll `before_%s_gcode` loops; add `debug` or `command_*_gcode` to a wipe/form_tip section |
+| Feature hook option keys | `hook/policy.py` `hook_option_keys_for_actions(THAT_FEATURE_ACTIONS)` unioned into that feature’s `OPTION_KEYS` | Hand-roll `before_%s_gcode` loops; add `debug` or `command_*_gcode` to a form_tip/purge/pause section; add action hooks on wipe |
 | `debug` console log | `[klipper_extras hook]` `debug` only (no section → no debug). `call_hook` logs **every** invoke, including empty templates (`(empty)`) | A second debug flag on another section; skip empty templates in the debug log; `print()` / extra `respond_info` at call sites |
 | Frontend `gcode_macro` list | `features/ui_macros.py` `register_ui_macro_shims` at `klippy:connect` | Copy `UiMacroShim` / `add_object("gcode_macro …")` into a feature; register in `__init__` (short-circuits a real `[gcode_macro NAME]`) |
 
-New action → add the name to that feature’s `*_HOOK_ACTIONS` tuple, one `self._hooked(...)` call site (`bind_hooked` in `__init__`), docs + sample. Do not add hook option keys by hand.
+New action (form tip / purge / pause) → add the name to that feature’s `*_HOOK_ACTIONS` tuple, one `self._hooked(...)` call site (`bind_hooked` in `__init__`), docs + sample. Do not add hook option keys by hand. Wipe has no action-hook tuple.
 
 Load templates like Klipper `[probe] activate_gcode`: `printer.load_object(config, "gcode_macro").load_template(config, option, "")`. Run from a command handler: **render and** `run_script_from_command` in the **same** `try` (`run_hook_template`) so `continue` catches `{ action_raise_error('…') }` (raised during render). Do not `template.render()` then run in a separate `try`. **Never** `run_script()` (gcode mutex).
 
@@ -62,13 +64,13 @@ Load templates like Klipper `[probe] activate_gcode`: `printer.load_object(confi
 Call order after homing checks and `SAVE_GCODE_STATE`, still in `try` (not `finally`):
 
 1. Common `command_before_gcode` if the hook object exists (`call_common_hook`)
-2. Each feature action that runs: `run_hooked_action` (before → work → after)
+2. Feature work. Features with `*_HOOK_ACTIONS`: `run_hooked_action` (before → work → after) for each action that runs. Wipe: heat / retract / fan / motion with no action hooks.
 3. Common `command_after_gcode` only if step 2 succeeded
 4. `finally`: restore fan + G-code state — **no hooks**; do not raise from `finally`
 
 ## Settings resolution (do not invert)
 
-1. Parse **only keys present** in that Klipper section. Host: `__init__.py` `_parse_user_config`. Action features with hook keys: `hook/load.py` `parse_user_config`. Do not treat Klipper `config.get(..., default)` as “user set”.
+1. Parse **only keys present** in that Klipper section. Host: `__init__.py` `_parse_user_config`. Prefix features: `hook/load.py` `parse_user_config` (skips `*_gcode` / `on_hook_fail`). Do not treat Klipper `config.get(..., default)` as “user set”.
 2. For omitted keys: **Klipper field or calc** when the object/field exists. Read via `klipper_fields.py` using **klippy** names only (`toolhead.get_max_velocity()`, `extruder.get_heater().min_extrude_temp`, `filament_area`, `max_e_velocity`, `max_extrude_ratio * filament_area`). Key-in-file: `PrinterConfig.status_raw_config` (`lookup_object("configfile")`). Do not try config-key names as object attributes, and do not fall back through a second API. Hints are read at `klippy:connect`, not guessed. Example: omitted `travel_speed` is `[printer] max_velocity`. Docs: [configuration.md](docs/configuration.md) **Klipper sources**.
 3. Else **feature safe default** from that feature’s `constants.py` (named profile values; never printer-model coordinates).
 4. A **user-declared** value **overrides** hint and plugin default (set `travel_speed` on that feature section). Empty/missing → hint or default. XY speeds are then capped at `max_velocity`. Do not fill `travel_z` from `z_hop`.
@@ -110,7 +112,7 @@ Do **not** invent config keys. Host keys: `CONFIG_OPTION_KEYS`. Each feature: it
 | Host user/log strings | `messages.py` (`line`, `pose_required`, `extra_section`; `%` formatting only). Features call these; do not hardcode `klipper_extras:` |
 | Feature registry | `features/__init__.py` |
 | Prefix dispatch | `__init__.py` `load_config_prefix` |
-| Wipe motion library (planner, hints, runner, wipe action names) | `features/wipe_motion/` |
+| Wipe motion library (planner, hints, runner) | `features/wipe_motion/` |
 | Bed wipe keys/defaults/G-code | `features/wipe_nozzle_on_bed/` |
 | Rubber wipe keys/defaults/G-code | `features/wipe_nozzle_on_rubber/` |
 | Purge motion library (planner, styles, hints, runner, purge action names) | `features/purge_motion/` |
@@ -186,7 +188,7 @@ Prefer extending existing tests over ad-hoc scripts.
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **klipper_common_plugin** (1753 symbols, 3129 relationships, 104 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **klipper_common_plugin** (1734 symbols, 3088 relationships, 102 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from ..hook.policy import hook_option_keys_for_actions
-
 MOVE_TRAVEL = "travel"
 MOVE_WIPE = "wipe"
 MOVE_LIFT = "lift"
@@ -20,23 +18,6 @@ DEFAULT_FAN_OBJECT = "fan"
 PAUSED_REFUSE = "refuse"
 PAUSED_HOLD_Z_IF_OMITTED = "hold_z_if_omitted"
 USER_Z_KEYS = ("wipe_z", "z_hop", "travel_z")
-
-# Named wipe actions. Each has before_<name>_gcode / after_<name>_gcode.
-WIPE_HOOK_ACTIONS = (
-    "heat",
-    "retract",
-    "fan",
-    "z_hop",
-    "travel",
-    "lower",
-    "pass",
-    "lift",
-)
-
-
-def wipe_hook_option_keys():
-    """Keys owned on each wipe feature section (not imported from hook.OPTION_KEYS)."""
-    return hook_option_keys_for_actions(WIPE_HOOK_ACTIONS)
 
 # Feature G-code wrap. NAME is the feature G-code. MOVE_SPEED is mm/s (Klipper).
 CMD_ABSOLUTE = "G90"

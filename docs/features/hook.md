@@ -2,7 +2,7 @@
 
 Enabled only by `[klipper_extras hook]`. **No G-code command.** Host `[klipper_extras]` is required.
 
-Wraps each **action feature command** (wipe, form tip, purge, pause/resume/cancel) as a whole. Per-action hooks (`before_pass_gcode`, …) live on that feature’s section — see [wipe on bed](wipe_nozzle_on_bed.md), [wipe on rubber](wipe_nozzle_on_rubber.md), [form tip](form_tip.md). Pause/resume/cancel hooks are **per command** (`before_pause_gcode`, …) on [pause_resume](pause_resume.md), not per retract/park step.
+Wraps each **action feature command** (wipe, form tip, purge, pause/resume/cancel) as a whole. Wipe uses **only** this wrap. Per-action hooks live on [form tip](form_tip.md), [purge on bed](purge_on_bed.md), and [purge at pose](purge_at_pose.md). Pause/resume/cancel hooks are **per command** (`before_pause_gcode`, …) on [pause_resume](pause_resume.md), not per retract/park step.
 
 Templates are Klipper G-code macros ([Command templates](https://www.klipper3d.org/Command_Templates.md)). Loaded like `[probe] activate_gcode` (`gcode_macro.load_template`). Comment template: [`config/sample-hook.cfg`](../../config/sample-hook.cfg). Owned keys: `features/hook/` `OPTION_KEYS`.
 
@@ -34,7 +34,7 @@ Unknown G-code names are **not** a failure in Klipper (console info only). To fa
 Inside the feature command, after homing checks and `SAVE_GCODE_STATE`:
 
 1. This section’s `command_before_gcode` (if this prefix is loaded)
-2. That feature’s per-action hooks and work
+2. That feature’s work (and per-action hooks when that feature owns them)
 3. This section’s `command_after_gcode` (only if step 2 did not raise)
 4. `finally`: restore fan + `RESTORE_GCODE_STATE` — **no hooks**
 

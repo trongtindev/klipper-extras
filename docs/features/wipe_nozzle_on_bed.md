@@ -33,29 +33,10 @@ Omitted XY → `(50, 50) ↔ (100, 50)` (50 mm along X).
 | `nozzle_temperature` | float | omitted | **No Klipper field.** If set: heat and wait. Else wait until current ≥ `min_nozzle_temp` when that floor is known. |
 | `fan_speed` | float | `1.0` | **No Klipper field** (`[fan] max_power` is not copied). 0.0–1.0; restored after wipe |
 | `fan` | string | `[fan]` if that object exists, else skip | Missing user-named fan is a config error |
-| `before_<action>_gcode` / `after_<action>_gcode` | G-code template | empty | Per-action hooks. See **Actions** below. [Command templates](https://www.klipper3d.org/Command_Templates.md). |
-| `on_hook_fail` | string | `stop` | `stop` \| `continue` for **this** section’s action hooks. |
 
 Speeds `> 0`. `travel_z > wipe_z`. Negative `wipe_z` is a config error. If both `nozzle_temperature` and `min_nozzle_temp` are set, nozzle temp must be `>= min_nozzle_temp`.
 
-## Actions
-
-Every action has `before_<action>_gcode` and `after_<action>_gcode` call sites. Empty template = skip. Skipped work (no heat info, `retract` `0`, no fan) skips that action’s hooks.
-
-| Action | Work |
-|--------|------|
-| `heat` | nozzle wait / `M109` |
-| `retract` | `G1 E−retract` |
-| `fan` | set wipe fan speed |
-| `z_hop` | lift Z in place |
-| `travel` | XY at `travel_z` to start |
-| `lower` | drop to `wipe_z` |
-| `pass` | **each** wipe pass (Jinja `pass_index`) |
-| `lift` | lift to `travel_z` |
-
-Command wrap (optional `[klipper_extras hook]`): [hook.md](hook.md). Order after `SAVE_GCODE_STATE`: common before → these actions → common after → restore in `finally` (no hooks). Hooks may move the toolhead; restore still returns XYZ to the pre-command pose.
-
-Unknown commands are not a hook failure. Use `{ action_raise_error('…') }` to stop.
+Command wrap (optional `[klipper_extras hook]`): [hook.md](hook.md). Order after `SAVE_GCODE_STATE`: common before → heat / retract / fan / motion → common after → restore in `finally` (no hooks). Wrap templates may move the toolhead; restore still returns XYZ to the pre-command pose.
 
 ## G-code
 
@@ -65,7 +46,7 @@ Errors if `[pause_resume]` reports paused (`is_paused`). Printing (including `PR
 
 Call from `PRINT_START` **after XYZ are homed**. Heat the nozzle first, or set `nozzle_temperature` here.
 
-Approach lifts to `travel_z` in place, then moves XY, then drops to `wipe_z`. Saves G-code state (`SAVE_GCODE_STATE NAME=WIPE_NOZZLE_ON_BED`) after homing checks, before hooks and actions (including heat). Restores in `finally` (`RESTORE_GCODE_STATE NAME=WIPE_NOZZLE_ON_BED MOVE=1`) so coordinate mode, speed override, and XYZ return to the pre-wipe values. Fan is restored separately. Retract is not undone.
+Approach lifts to `travel_z` in place, then moves XY, then drops to `wipe_z`. Saves G-code state (`SAVE_GCODE_STATE NAME=WIPE_NOZZLE_ON_BED`) after homing checks, before command wrap and work (including heat). Restores in `finally` (`RESTORE_GCODE_STATE NAME=WIPE_NOZZLE_ON_BED MOVE=1`) so coordinate mode, speed override, and XYZ return to the pre-wipe values. Fan is restored separately. Retract is not undone.
 
 ```gcode
 G28

@@ -9,7 +9,6 @@ from ..wipe_motion.constants import (
     DEFAULT_TRAVEL_SPEED,
     DEFAULT_TRAVEL_Z,
     PAUSED_HOLD_Z_IF_OMITTED,
-    wipe_hook_option_keys,
 )
 from ..wipe_motion.types import FeatureSpec, WipeKindProfile
 from .messages import help_wipe_rubber
@@ -43,7 +42,7 @@ OPTION_KEYS = frozenset(
         "fan_speed",
         "fan",
     )
-) | wipe_hook_option_keys()
+)
 
 PROFILE = WipeKindProfile(
     wipe_z=DEFAULT_WIPE_Z,
