@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Installer extras symlink tests (no systemctl). Skipped when EUID=0 because
-# install.sh refuses root (same as klicky-probe-plugin).
+# install.sh refuses root.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

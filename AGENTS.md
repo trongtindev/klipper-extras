@@ -4,8 +4,6 @@ Klipper Python extra (`[klipper_extras]`), loaded via `load_config`. Software li
 
 This extra is a **host** plus **owned features**. The host is version floor, log levels, status G-codes, installer. Features are enabled by documented `[klipper_extras <kind>]` prefix sections (`load_config_prefix`). Do not add undocumented sections or printer-model literals.
 
-Installer / Moonraker behavior follows [klicky-probe-plugin](https://github.com/trongtindev/klicky-probe-plugin).
-
 ## Host vs feature ownership (do not stuff features into the host)
 
 - **Host** (`plugin/klipper_extras/` root: `__init__.py`, `constants.py`, `defaults.py`, `config_validate.py`, `messages.py`, `klipper_version.py`): no feature option keys, no feature XY/Z/speed defaults, no feature G-code names. `min_nozzle_temp` on `[klipper_extras]` is a shared nozzle floor (not geometry); purge reads it. Wipe / form tip do not.
