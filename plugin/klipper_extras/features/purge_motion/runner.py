@@ -6,12 +6,10 @@ import logging
 from dataclasses import replace as dataclass_replace
 
 from ... import messages as host_msg
-from ...components import ensure_feature_components
+from ..base import FeatureBase
 from ..gcode import gcode_f
 from ..gcode_state import parse_restore_move
-from ..hook.execute import bind_hooked, call_common_hook
-from ..hook.load import load_action_hook_templates, load_on_hook_fail, parse_user_config
-from ..ui_macros import register_ui_macro_shims
+from ..hook.execute import call_common_hook
 from . import messages as msg
 from .constants import (
     CMD_ABSOLUTE,
@@ -48,49 +46,27 @@ def unset_leveling_commands(printer, eventtime):
     return missing
 
 
-class PurgeRunner:
+class PurgeRunner(FeatureBase):
     """One prefix section. Settings are instance-local (no shared purge state)."""
 
     def __init__(self, config, spec):
-        self.printer = config.get_printer()
-        self.gcode = self.printer.lookup_object("gcode")
         self.spec = spec
-        self.kind = spec.kind
         self.gcode_name = spec.gcode
-        self._user = parse_user_config(config, spec.option_keys)
-        self.settings = None
-        self._hook_templates = load_action_hook_templates(
-            config, self.printer, PURGE_HOOK_ACTIONS
-        )
-        self._on_hook_fail = load_on_hook_fail(config)
-        self._hooked = bind_hooked(
-            self.printer, self._hook_templates, self._on_hook_fail, self.kind
-        )
-        self.printer.register_event_handler("klippy:connect", self._handle_connect)
-        self.gcode.register_command(
-            self.gcode_name,
-            self.cmd_purge,
-            desc=spec.help_text,
+        super().__init__(
+            config,
+            kind=spec.kind,
+            option_keys=spec.option_keys,
+            hook_actions=PURGE_HOOK_ACTIONS,
         )
 
-    def _handle_connect(self):
-        ensure_feature_components(self.printer, self.kind)
-        hints = collect_purge_hints(self.printer)
-        try:
-            self.settings = self.spec.resolve(self._user, hints)
-        except ValueError as e:
-            raise self.printer.config_error(str(e)) from e
-        if self.settings.fan is not None:
-            if self.printer.lookup_object(self.settings.fan, None) is None:
-                raise self.printer.config_error(msg.fan_missing(self.settings.fan))
-        result = validate_path(self.settings)
-        for issue in result.warnings:
-            logging.warning("%s", issue.message)
-        if result.errors:
-            raise self.printer.config_error(
-                host_msg.config_validation_failed([e.message for e in result.errors])
-            )
-        register_ui_macro_shims(self.printer, (self.gcode_name,))
+    def _command_bindings(self):
+        return ((self.gcode_name, self.cmd_purge, self.spec.help_text),)
+
+    def resolve_settings(self):
+        return self.spec.resolve(self._user, collect_purge_hints(self.printer))
+
+    def validate_settings(self):
+        return validate_path(self.settings)
 
     def cmd_purge(self, gcmd):
         base = self.settings
@@ -272,19 +248,20 @@ class PurgeRunner:
         self.gcode.run_script_from_command(" ".join(parts))
 
     def get_status(self, eventtime):
+        status = self.status_core()
+        status["gcode"] = self.gcode_name
         s = self.settings
         if s is None:
-            return {"kind": self.kind, "enabled": True, "gcode": self.gcode_name}
-        status = {
-            "kind": self.kind,
-            "enabled": True,
-            "gcode": self.gcode_name,
-            "origin_mode": s.origin_mode,
-            "start_x": s.start_x,
-            "start_y": s.start_y,
-            "purge_z": s.purge_z,
-            "purge_amount": s.purge_amount,
-        }
+            return status
+        status.update(
+            {
+                "origin_mode": s.origin_mode,
+                "start_x": s.start_x,
+                "start_y": s.start_y,
+                "purge_z": s.purge_z,
+                "purge_amount": s.purge_amount,
+            }
+        )
         if s.style is not None:
             status["style"] = s.style
         return status

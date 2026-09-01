@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import logging
 
-from ... import klipper_fields as kf, messages as host_msg
-from ...components import ensure_feature_components
+from ... import klipper_fields as kf
 from ...respond_action import prompt_end, prompt_show, respond_error
+from ..base import FeatureBase
 from ..gcode import gcode_f
-from ..hook.execute import bind_hooked, call_common_hook
-from ..hook.load import load_action_hook_templates, load_on_hook_fail, parse_user_config
-from ..ui_macros import register_ui_macro_shims
+from ..hook.execute import call_common_hook
 from . import messages as msg
 from .constants import (
     GCODES,
@@ -29,76 +27,62 @@ from .types import PauseResumeHints, PauseResumeSettings
 from .validate import validate_pause
 
 
-class PauseResumeRunner:
+class PauseResumeRunner(FeatureBase):
     """Owns PAUSE, RESUME, CANCEL_PRINT. Settings are instance-local."""
 
     def __init__(self, config):
-        self.printer = config.get_printer()
-        self.gcode = self.printer.lookup_object("gcode")
-        self.kind = KIND
-        self._user = parse_user_config(config, OPTION_KEYS)
-        self.settings = None
         self._base = None
-        self._hook_templates = load_action_hook_templates(
-            config, self.printer, PAUSE_RESUME_HOOK_ACTIONS
-        )
-        self._on_hook_fail = load_on_hook_fail(config)
-        self._hooked = bind_hooked(
-            self.printer, self._hook_templates, self._on_hook_fail, self.kind
-        )
         self._saved_extruder_target = 0.0
         self._saved_idle_timeout = 0.0
-        self.printer.register_event_handler("klippy:connect", self._handle_connect)
-        self.printer.register_event_handler("klippy:ready", self._handle_ready)
+        super().__init__(
+            config,
+            kind=KIND,
+            option_keys=OPTION_KEYS,
+            hook_actions=PAUSE_RESUME_HOOK_ACTIONS,
+            required_components=REQUIRED_COMPONENTS,
+            defer_commands=True,
+        )
 
-    def _handle_connect(self):
-        extra_required = []
+    def required_components(self):
+        extra = []
         sensor = self._user.get("runout_sensor")
         if sensor is not None and str(sensor).strip():
-            extra_required.append(str(sensor).strip())
+            extra.append(str(sensor).strip())
         idle_raw = self._user.get("idle_timeout")
         if idle_raw is not None and str(idle_raw).strip():
-            extra_required.append("idle_timeout")
-        comps = ensure_feature_components(
-            self.printer,
-            self.kind,
-            required=REQUIRED_COMPONENTS + tuple(extra_required),
-        )
-        self._base = comps["pause_resume"]
-        hints = PauseResumeHints(
-            max_velocity=kf.max_velocity(self.printer),
-            z_hop=kf.safe_z_hop(self.printer),
-            retract=kf.firmware_retract(self.printer)[0],
-            retract_speed=kf.firmware_retract(self.printer)[1],
-        )
-        try:
-            self.settings = resolve_pause_settings(self._user, hints)
-        except ValueError as e:
-            raise self.printer.config_error(str(e)) from e
-        result = validate_pause(self.settings)
-        for issue in result.warnings:
-            logging.warning("%s", issue.message)
-        if result.errors:
-            raise self.printer.config_error(
-                host_msg.config_validation_failed([e.message for e in result.errors])
-            )
-        register_ui_macro_shims(self.printer, GCODES)
+            extra.append("idle_timeout")
+        return self._required_components + tuple(extra)
 
-    def _handle_ready(self):
-        """After gcode_macro rename_existing (connect). Owns PAUSE/RESUME/CANCEL_PRINT."""
-        if self.settings is None or self._base is None:
-            return
-        self._steal_commands()
-
-    def _steal_commands(self) -> None:
-        pairs = (
+    def _command_bindings(self):
+        return (
             ("PAUSE", self.cmd_PAUSE, HELP_PAUSE),
             ("RESUME", self.cmd_RESUME, HELP_RESUME),
             ("CANCEL_PRINT", self.cmd_CANCEL_PRINT, HELP_CANCEL),
         )
-        for name, handler, desc in pairs:
-            self.gcode.register_command(name, None)
-            self.gcode.register_command(name, handler, desc=desc)
+
+    def on_components(self, comps) -> None:
+        self._base = comps["pause_resume"]
+
+    def resolve_settings(self):
+        retract = kf.firmware_retract(self.printer)
+        return resolve_pause_settings(
+            self._user,
+            PauseResumeHints(
+                max_velocity=kf.max_velocity(self.printer),
+                z_hop=kf.safe_z_hop(self.printer),
+                retract=retract[0],
+                retract_speed=retract[1],
+            ),
+        )
+
+    def validate_settings(self):
+        return validate_pause(self.settings)
+
+    def on_ready(self) -> None:
+        """After gcode_macro rename_existing (connect). Owns PAUSE/RESUME/CANCEL_PRINT."""
+        if self.settings is None or self._base is None:
+            return
+        self._register_commands(replace=True)
 
     def _extra(self, command: str) -> dict:
         return {"kind": self.kind, "command": command}

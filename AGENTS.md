@@ -7,10 +7,10 @@ This extra is a **host** plus **owned features**. The host is version floor, log
 ## Host vs feature ownership (do not stuff features into the host)
 
 - **Host** (`plugin/klipper_extras/` root: `__init__.py`, `constants.py`, `defaults.py`, `config_validate.py`, `messages.py`, `klipper_version.py`): no feature option keys, no feature XY/Z/speed defaults, no feature G-code names. `min_nozzle_temp` on `[klipper_extras]` is a shared nozzle floor (not geometry); purge reads it. Wipe / form tip do not.
-- **Features** live under `plugin/klipper_extras/features/<kind>/`. That package owns: `KIND`, `GCODE`, `OPTION_KEYS`, profile defaults, settings resolve, messages, `load_feature`.
+- **Features** live under `plugin/klipper_extras/features/<kind>/`. That package owns: `KIND`, `GCODE`, `OPTION_KEYS`, profile defaults, settings resolve, messages, `load_feature`. Prefix extras **subclass** `features/base.py` `FeatureBase`. Host `KlipperExtras` does not.
 - Register a feature only in `features/__init__.py` (`FEATURE_LOADERS` / `FEATURE_GCODES`). Kinds without a command omit `FEATURE_GCODES`. Host `load_config_prefix` dispatches through that map — do not `if kind == …` in host modules.
-- Shared algorithms used by *related* features (e.g. wipe path planner, purge styles) go in `features/<family>/` (`wipe_motion/`, `purge_motion/`), **not** in host files. A library is not a feature and has no config section.
-- New feature → new package + registry entry + **`docs/features/<kind>.md`** + **`config/sample-<kind>.cfg`**. Never grow host `CONFIG_OPTION_KEYS` or dump feature options into host `docs/configuration.md` / `docs/gcodes.md`.
+- Shared algorithms used by *related* features (e.g. wipe path planner, purge styles) go in `features/<family>/` (`wipe_motion/`, `purge_motion/`), **not** in host files. A library is not a feature and has no config section. Family runners that *are* the extra instance (`WipeRunner`, `PurgeRunner`) still subclass `FeatureBase`.
+- New feature → new package + registry entry + **subclass `FeatureBase`** + **`docs/features/<kind>.md`** + **`config/sample-<kind>.cfg`**. Never grow host `CONFIG_OPTION_KEYS` or dump feature options into host `docs/configuration.md` / `docs/gcodes.md`.
 
 ## Features run independently (no option / pose collision)
 
@@ -47,15 +47,16 @@ Two layers. **The feature that owns the action owns that layer’s hook keys, te
 
 | Need | Use this | Do not |
 |------|----------|--------|
-| before → work → after | `hook/execute.py` `run_hooked_action` / `bind_hooked` (one bind per extra `__init__`) | Duplicate `_hooked` methods; `call_action_hook` before **and** after around work; copy `hook_context` / debug / render into a feature |
+| Connect / ready / host extras | `features/base.py` `FeatureBase` (`_handle_connect` / `_handle_ready` / `ensure_feature_components`) | Copy `_handle_connect` or `_handle_ready`; call `ensure_feature_components` in a feature |
+| before → work → after | `hook/execute.py` `run_hooked_action` / `bind_hooked` (one bind in `FeatureBase.__init__` when `hook_actions`) | Duplicate `_hooked` methods; `call_action_hook` before **and** after around work; copy `hook_context` / debug / render into a feature |
 | Command wrap | `call_common_hook(printer, "before"\|"after", {"kind": self.kind})` | `lookup_object("klipper_extras hook")` then call templates yourself |
-| Load templates | `hook/load.py` `load_action_hook_templates` in extra `__init__` | Stuff templates into `WipePathSettings` / `FormTipSettings`; `config.get` then `run_script` later |
-| Parse section keys | `hook/load.py` `parse_user_config` (skips `*_gcode` / `on_hook_fail`) | Copy `config_has` + skip-hook-key loops into each feature |
+| Load templates | `hook/load.py` `load_action_hook_templates` in `FeatureBase.__init__` when `hook_actions` | Stuff templates into `WipePathSettings` / `FormTipSettings`; `config.get` then `run_script` later |
+| Parse section keys | `hook/load.py` `parse_user_config` (skips `*_gcode` / `on_hook_fail`; called from `FeatureBase`) | Copy `config_has` + skip-hook-key loops into each feature |
 | Feature hook option keys | `hook/policy.py` `hook_option_keys_for_actions(THAT_FEATURE_ACTIONS)` unioned into that feature’s `OPTION_KEYS` | Hand-roll `before_%s_gcode` loops; add `debug` or `command_*_gcode` to a form_tip/purge/pause section; add action hooks on wipe |
 | `debug` console log | `[klipper_extras hook]` `debug` only (no section → no debug). `call_hook` logs **every** invoke, including empty templates (`(empty)`) | A second debug flag on another section; skip empty templates in the debug log; `print()` / extra `respond_info` at call sites |
 | Frontend `gcode_macro` list | `features/ui_macros.py` `register_ui_macro_shims` at `klippy:connect` | Copy `UiMacroShim` / `add_object("gcode_macro …")` into a feature; register in `__init__` (short-circuits a real `[gcode_macro NAME]`) |
 
-New action (form tip / purge / pause) → add the name to that feature’s `*_HOOK_ACTIONS` tuple, one `self._hooked(...)` call site (`bind_hooked` in `__init__`), docs + sample. Do not add hook option keys by hand. Wipe has no action-hook tuple.
+New action (form tip / purge / pause) → add the name to that feature’s `*_HOOK_ACTIONS` tuple, pass it as `hook_actions` to `FeatureBase`, one `self._hooked(...)` call site, docs + sample. Do not add hook option keys by hand. Wipe has no action-hook tuple (`hook_actions` omitted).
 
 Load templates like Klipper `[probe] activate_gcode`: `printer.load_object(config, "gcode_macro").load_template(config, option, "")`. Run from a command handler: **render and** `run_script_from_command` in the **same** `try` (`run_hook_template`) so `continue` catches `{ action_raise_error('…') }` (raised during render). Do not `template.render()` then run in a separate `try`. **Never** `run_script()` (gcode mutex).
 
@@ -111,6 +112,7 @@ Do **not** invent config keys. Host keys: `CONFIG_OPTION_KEYS`. Each feature: it
 | Host validation | `config_validate.py` `validate_common_config` |
 | Host user/log strings | `messages.py` (`line`, `pose_required`, `extra_section`; `%` formatting only). Features call these; do not hardcode `klipper_extras:` |
 | Feature registry | `features/__init__.py` |
+| Feature lifecycle (connect / ready / components) | `features/base.py` `FeatureBase` |
 | Prefix dispatch | `__init__.py` `load_config_prefix` |
 | Wipe motion library (planner, hints, runner) | `features/wipe_motion/` |
 | Bed wipe keys/defaults/G-code | `features/wipe_nozzle_on_bed/` |
@@ -161,7 +163,7 @@ Do not ship a temporary patch, shim, or workaround to “get unstuck.” Fix the
 - **Pure logic** (host `defaults` / `config_validate` / `messages` / `klipper_version` / `constants`; feature `constants` / resolve / validate / messages): **no** Klipper imports. Unit-test without a Klipper tree.
 - **`__init__.py`**: host Klipper I/O, `register_command`, config parse, `get_status`, `load_config` / `load_config_prefix` wiring only.
 - **`klipper_fields.py`**: live field reads at connect (no klippy import). Duck-types `PrinterConfig.status_raw_config`, `ToolHead.get_max_velocity()`, `PrinterExtruder`.
-- **Feature `feature.py` / `wipe_motion/runner.py` / `hints.py` / `hook/feature.py` / `hook/load.py` / `hook/execute.py`**: may import Klipper.
+- **Feature `feature.py` / `features/base.py` / `wipe_motion/runner.py` / `hints.py` / `hook/feature.py` / `hook/load.py` / `hook/execute.py`**: may import Klipper.
 - New modules: module docstring + `from __future__ import annotations`. Relative imports inside the package; tests use `from klipper_extras.… import …`.
 - Value objects: `@dataclass` / `@dataclass(frozen=True)`.
 - Long user/log text → that owner’s `messages.py` as `msg.foo(...)`. No `print()`.
