@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Uninstall klipper_common (extras symlink + Moonraker update_manager section).
+# Uninstall klipper_extras (extras symlink + Moonraker update_manager section).
 #
 # Wrapper around plugin/install.sh -u so uninstall is discoverable as its own
 # script. All install.sh flags still apply (-k, -m, -h).

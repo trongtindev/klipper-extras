@@ -1,6 +1,6 @@
 # Common command hooks
 
-Enabled only by `[klipper_common hook]`. **No G-code command.** Host `[klipper_common]` is required.
+Enabled only by `[klipper_extras hook]`. **No G-code command.** Host `[klipper_extras]` is required.
 
 Wraps each **action feature command** (wipe, form tip, purge, pause/resume/cancel) as a whole. Per-action hooks (`before_pass_gcode`, …) live on that feature’s section — see [wipe on bed](wipe_nozzle_on_bed.md), [wipe on rubber](wipe_nozzle_on_rubber.md), [form tip](form_tip.md). Pause/resume/cancel hooks are **per command** (`before_pause_gcode`, …) on [pause_resume](pause_resume.md), not per retract/park step.
 
@@ -9,7 +9,7 @@ Templates are Klipper G-code macros ([Command templates](https://www.klipper3d.o
 ## Section
 
 ```ini
-[klipper_common hook]
+[klipper_extras hook]
 ```
 
 Omitted templates → no-op.
@@ -40,6 +40,6 @@ Inside the feature command, after homing checks and `SAVE_GCODE_STATE`:
 
 ## Status
 
-Host `printer.klipper_common.hook`: true when this section is loaded.
+Host `printer.klipper_extras.hook`: true when this section is loaded.
 
-Prefix object `printer["klipper_common hook"]`: `kind`, `enabled`, `on_hook_fail`, `debug`.
+Prefix object `printer["klipper_extras hook"]`: `kind`, `enabled`, `on_hook_fail`, `debug`.

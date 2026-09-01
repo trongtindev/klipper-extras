@@ -1,8 +1,8 @@
-# Configuration — `[klipper_common]`
+# Configuration — `[klipper_extras]`
 
 Host section only. Feature options live in that feature’s doc.
 
-Comment/uncomment template: [`config/sample-klipper-common.cfg`](../config/sample-klipper-common.cfg).
+Comment/uncomment template: [`config/sample-klipper-extras.cfg`](../config/sample-klipper-extras.cfg).
 
 Requires **Klipper ≥ v0.13.0** (checked at load). Install: [install.md](install.md).
 
@@ -28,7 +28,7 @@ Mapped to Klipper `klippy` (`toolhead.py`, `kinematics/extruder.py`, `extras/hea
 | `travel_z` | wipe, purge | profile `5` | **none** — do not copy `z_hop` | — |
 | `retract` | wipe, purge, pause_resume | `[firmware_retraction] retract_length`; else `0.5` | `[firmware_retraction] retract_length` (default `0`) | `firmware_retraction.retract_length` |
 | `retract_speed` | wipe, purge, pause_resume | `[firmware_retraction] retract_speed`; else `5` | `[firmware_retraction] retract_speed` (default `20` if section exists) | `firmware_retraction.retract_speed` |
-| `min_nozzle_temp` | wipe, purge, form tip; purge also reads host | `[extruder] min_extrude_temp` **only if that key is in the file** (`PrinterConfig.status_raw_config`) **+ 5 °C** (PID margin); purge then `[klipper_common] min_nozzle_temp`. User `min_nozzle_temp` / `nozzle_temperature` are not padded | `[extruder] min_extrude_temp` (Klipper default `170` if omitted — **not used**) | `extruder.get_heater().min_extrude_temp` |
+| `min_nozzle_temp` | wipe, purge, form tip; purge also reads host | `[extruder] min_extrude_temp` **only if that key is in the file** (`PrinterConfig.status_raw_config`) **+ 5 °C** (PID margin); purge then `[klipper_extras] min_nozzle_temp`. User `min_nozzle_temp` / `nozzle_temperature` are not padded | `[extruder] min_extrude_temp` (Klipper default `170` if omitted — **not used**) | `extruder.get_heater().min_extrude_temp` |
 | `nozzle_temperature` | wipe, purge, form tip | omitted (no heat-to target) | **none** | — |
 | `fan` | wipe, purge, form tip | object name `fan` if `[fan]` is loaded; else skip | `[fan]` | `lookup_object("fan")` |
 | `fan_speed` | wipe, purge, form tip | wipe/purge `1.0`; form tip `0` | **none** (`[fan] max_power` is PWM scale, not copied) | — |
@@ -42,7 +42,7 @@ No Klipper field (profile or **required** on that feature section): pose/`wipe_z
 
 Do not invent pose from axis max / `safe_z_home` `home_xy_position`.
 
-## Host — `[klipper_common]`
+## Host — `[klipper_extras]`
 
 Required. Common log/status surface.
 
@@ -56,7 +56,7 @@ Required. Common log/status surface.
 | Value | Console / log |
 |-------|----------------|
 | `warning` | No ready banner. Warnings still emit. |
-| `info` | Short `klipper_common v… ready` line (default). |
+| `info` | Short `klipper_extras v… ready` line (default). |
 | `verbose` | Banner + log_level / gcode list. |
 | `debug` | Same ready detail as verbose. |
 
@@ -64,9 +64,9 @@ Unknown values are a config error.
 
 ## Features
 
-Enabled by a documented `[klipper_common <kind>]` prefix. Without the section, that G-code is not registered. Features do not store options on `[klipper_common]`. Multiple features may be loaded at once; each has its own settings snapshot.
+Enabled by a documented `[klipper_extras <kind>]` prefix. Without the section, that G-code is not registered. Features do not store options on `[klipper_extras]`. Multiple features may be loaded at once; each has its own settings snapshot.
 
-Each feature declares Klipper extras (`REQUIRED_COMPONENTS` / `OPTIONAL_COMPONENTS`). Host `[klipper_common]` is always required. Missing **required** extras fail at `klippy:connect` (no auto-load, no fallback). Optional extras warn and stay `None`.
+Each feature declares Klipper extras (`REQUIRED_COMPONENTS` / `OPTIONAL_COMPONENTS`). Host `[klipper_extras]` is always required. Missing **required** extras fail at `klippy:connect` (no auto-load, no fallback). Optional extras warn and stay `None`.
 
 | Feature | Doc |
 |---------|-----|
@@ -78,11 +78,11 @@ Each feature declares Klipper extras (`REQUIRED_COMPONENTS` / `OPTIONAL_COMPONEN
 | Pause / resume / cancel | [features/pause_resume.md](features/pause_resume.md) (`PAUSE`, `RESUME`, `CANCEL_PRINT`; extras `virtual_sdcard`, `pause_resume`, `respond`) |
 | Common command hooks | [features/hook.md](features/hook.md) (no G-code; optional wrap) |
 
-## Status (Moonraker / `printer.klipper_common`)
+## Status (Moonraker / `printer.klipper_extras`)
 
 | Key | Meaning |
 |-----|---------|
-| `version` | Plugin version (`KLIPPER_COMMON_VERSION`) |
+| `version` | Plugin version (`KLIPPER_EXTRAS_VERSION`) |
 | `klipper_version` | Host `software_version` at connect |
 | `log_level` | Resolved `log_level` |
 | `min_nozzle_temp` | Host floor, or `null` if omitted |

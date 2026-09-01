@@ -5,13 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from klipper_common.features.purge_at_pose.constants import (
+from klipper_extras.features.purge_at_pose.constants import (
     GCODE as POSE_GCODE,
     KIND as POSE_KIND,
     OPTION_KEYS as POSE_KEYS,
     SPEC as POSE_SPEC,
 )
-from klipper_common.features.purge_motion.constants import (
+from klipper_extras.features.purge_motion.constants import (
     BREAK_TRAVEL,
     DEFAULT_TRAVEL_Z,
     ORIGIN_ADAPTIVE,
@@ -19,25 +19,25 @@ from klipper_common.features.purge_motion.constants import (
     PAUSED_HOLD_Z,
     PAUSED_REFUSE,
 )
-from klipper_common.features.purge_motion.hints import (
+from klipper_extras.features.purge_motion.hints import (
     host_min_nozzle_temp_from_host,
 )
-from klipper_common.features.purge_motion.messages import leveling_not_applied
-from klipper_common.features.purge_motion.resolve import (
+from klipper_extras.features.purge_motion.messages import leveling_not_applied
+from klipper_extras.features.purge_motion.resolve import (
     e_speed_mms,
     heat_wait_target,
     overlay_purge_amount,
     plan_purge_actions,
     resolve_bed_origin,
 )
-from klipper_common.features.purge_motion.runner import (
+from klipper_extras.features.purge_motion.runner import (
     PurgeRunner,
     unset_leveling_commands,
 )
-from klipper_common.features.purge_motion.styles import VORON_STROKES, voron_strokes
-from klipper_common.features.purge_motion.types import PurgeKlipperHints
-from klipper_common.features.purge_motion.validate import validate_path
-from klipper_common.features.purge_on_bed.constants import (
+from klipper_extras.features.purge_motion.styles import VORON_STROKES, voron_strokes
+from klipper_extras.features.purge_motion.types import PurgeKlipperHints
+from klipper_extras.features.purge_motion.validate import validate_path
+from klipper_extras.features.purge_on_bed.constants import (
     GCODE as PURGE_BED_GCODE,
     KIND as PURGE_BED_KIND,
     OPTION_KEYS as PURGE_BED_KEYS,
@@ -440,7 +440,7 @@ class _FakeConfig:
         return self._printer
 
     def get_name(self):
-        return "klipper_common purge_at_pose"
+        return "klipper_extras purge_at_pose"
 
 
 class _FakePauseResume:

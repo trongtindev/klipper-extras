@@ -6,18 +6,18 @@ import logging
 
 import pytest
 
-from klipper_common.constants import CONFIG_OPTION_KEYS
-from klipper_common.features import FEATURE_GCODES, FEATURE_KINDS, FEATURE_LOADERS
-from klipper_common.features.form_tip import OPTION_KEYS as FORM_TIP_KEYS
-from klipper_common.features.form_tip.constants import FORM_TIP_HOOK_ACTIONS
-from klipper_common.features.hook.constants import (
+from klipper_extras.constants import CONFIG_OPTION_KEYS
+from klipper_extras.features import FEATURE_GCODES, FEATURE_KINDS, FEATURE_LOADERS
+from klipper_extras.features.form_tip import OPTION_KEYS as FORM_TIP_KEYS
+from klipper_extras.features.form_tip.constants import FORM_TIP_HOOK_ACTIONS
+from klipper_extras.features.hook.constants import (
     DEFAULT_ON_HOOK_FAIL,
     KIND as HOOK_KIND,
     ON_FAIL_CONTINUE,
     ON_FAIL_STOP,
     OPTION_KEYS as HOOK_KEYS,
 )
-from klipper_common.features.hook.execute import (
+from klipper_extras.features.hook.execute import (
     EmptyHookTemplate,
     bind_hooked,
     call_action_hook,
@@ -26,15 +26,15 @@ from klipper_common.features.hook.execute import (
     run_hook_template,
     run_hooked_action,
 )
-from klipper_common.features.hook.messages import hook_debug_call
-from klipper_common.features.hook.policy import (
+from klipper_extras.features.hook.messages import hook_debug_call
+from klipper_extras.features.hook.policy import (
     hook_option_keys_for_actions,
     is_hook_config_key,
     resolve_on_hook_fail,
 )
-from klipper_common.features.wipe_motion.constants import WIPE_HOOK_ACTIONS
-from klipper_common.features.wipe_nozzle_on_bed import OPTION_KEYS as BED_KEYS
-from klipper_common.features.wipe_nozzle_on_rubber import OPTION_KEYS as RUBBER_KEYS
+from klipper_extras.features.wipe_motion.constants import WIPE_HOOK_ACTIONS
+from klipper_extras.features.wipe_nozzle_on_bed import OPTION_KEYS as BED_KEYS
+from klipper_extras.features.wipe_nozzle_on_rubber import OPTION_KEYS as RUBBER_KEYS
 
 
 class _FakeGcode:
@@ -62,7 +62,7 @@ class _FakePrinter:
     def lookup_object(self, name, default=None):
         if name == "gcode":
             return self._gcode
-        if name == "klipper_common hook":
+        if name == "klipper_extras hook":
             return self._hook if self._hook is not None else default
         return default
 

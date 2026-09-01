@@ -1,6 +1,6 @@
 # Pause / resume / cancel
 
-Enabled only by `[klipper_common pause_resume]`. Takes over **`PAUSE`**, **`RESUME`**, and **`CANCEL_PRINT`** (the names Mainsail / Fluidd / KlipperScreen send). Host `[klipper_common]` is required.
+Enabled only by `[klipper_extras pause_resume]`. Takes over **`PAUSE`**, **`RESUME`**, and **`CANCEL_PRINT`** (the names Mainsail / Fluidd / KlipperScreen send). Host `[klipper_extras]` is required.
 
 Klipper’s `[pause_resume]` extra only pauses the SD job and saves `PAUSE_STATE`. This feature adds retract, Z-hop, optional XY park, cancel cleanup, and Mainsail [macro prompts](https://docs.mainsail.xyz/features/macro-prompts/) via `RESPOND TYPE=command`. It does **not** copy Mainsail/Fluidd Jinja macros.
 
@@ -25,7 +25,7 @@ Put `[virtual_sdcard]`, `[pause_resume]`, and `[respond]` in `printer.cfg`. `[in
 ## Section
 
 ```ini
-[klipper_common pause_resume]
+[klipper_extras pause_resume]
 ```
 
 Omitted `park_x` / `park_y` → **no XY move**. Pause retracts (if the nozzle is hot enough) and lifts Z by `z_hop` in place.
@@ -65,7 +65,7 @@ Stock Klipper saves `SAVE_GCODE_STATE NAME=PAUSE_STATE` inside BASE `PAUSE` and 
 2. `print_stats.state` is not `printing` → info, return
 3. Snapshot extruder target; optional `SET_IDLE_TIMEOUT`
 4. BASE `cmd_PAUSE`
-5. Common `command_before_gcode` if `[klipper_common hook]` is loaded
+5. Common `command_before_gcode` if `[klipper_extras hook]` is loaded
 6. `before_pause_gcode` → retract / `z_hop` / park → `after_pause_gcode`
 7. Common `command_after_gcode`
 
@@ -108,6 +108,6 @@ Unknown G-code in hooks is not a failure; use `{ action_raise_error('…') }`.
 
 ## Status
 
-Host `printer.klipper_common.pause_resume`: true when this section is loaded.
+Host `printer.klipper_extras.pause_resume`: true when this section is loaded.
 
-Prefix object `printer["klipper_common pause_resume"]`: `kind`, `gcodes`, `is_paused`, `park_x`, `park_y`, `z_hop`.
+Prefix object `printer["klipper_extras pause_resume"]`: `kind`, `gcodes`, `is_paused`, `park_x`, `park_y`, `z_hop`.

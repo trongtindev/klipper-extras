@@ -1,6 +1,6 @@
 import pytest
 
-from klipper_common.klipper_version import (
+from klipper_extras.klipper_version import (
     MIN_KLIPPER_VERSION,
     check_min_klipper_version,
     format_version_tuple,

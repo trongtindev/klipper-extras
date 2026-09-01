@@ -2,8 +2,8 @@ import logging
 
 import pytest
 
-from klipper_common.constants import MIN_EXTRUDE_TEMP_HEAT_MARGIN
-from klipper_common.features.wipe_motion.constants import (
+from klipper_extras.constants import MIN_EXTRUDE_TEMP_HEAT_MARGIN
+from klipper_extras.features.wipe_motion.constants import (
     CMD_ABSOLUTE,
     CMD_RESTORE_GCODE_STATE,
     CMD_SAVE_GCODE_STATE,
@@ -12,13 +12,13 @@ from klipper_common.features.wipe_motion.constants import (
     MOVE_TRAVEL,
     MOVE_WIPE,
 )
-from klipper_common.features.wipe_motion.hints import collect_wipe_hints
-from klipper_common.features.wipe_motion.messages import skip_nozzle_wait
-from klipper_common.features.wipe_motion.resolve import plan_wipe_actions, plan_wipe_moves
-from klipper_common.features.wipe_motion.runner import WipeRunner
-from klipper_common.features.wipe_motion.types import WipeKlipperHints
-from klipper_common.features.wipe_motion.validate import validate_path
-from klipper_common.features.wipe_nozzle_on_bed.constants import (
+from klipper_extras.features.wipe_motion.hints import collect_wipe_hints
+from klipper_extras.features.wipe_motion.messages import skip_nozzle_wait
+from klipper_extras.features.wipe_motion.resolve import plan_wipe_actions, plan_wipe_moves
+from klipper_extras.features.wipe_motion.runner import WipeRunner
+from klipper_extras.features.wipe_motion.types import WipeKlipperHints
+from klipper_extras.features.wipe_motion.validate import validate_path
+from klipper_extras.features.wipe_nozzle_on_bed.constants import (
     DEFAULT_PASS_OFFSET as BED_PASS_OFFSET,
     DEFAULT_PASSES as BED_PASSES,
     DEFAULT_START_X as BED_START_X,
@@ -30,7 +30,7 @@ from klipper_common.features.wipe_nozzle_on_bed.constants import (
     KIND as BED_KIND,
     SPEC as BED_SPEC,
 )
-from klipper_common.features.wipe_nozzle_on_rubber.constants import (
+from klipper_extras.features.wipe_nozzle_on_rubber.constants import (
     DEFAULT_PASSES as RUBBER_PASSES,
     DEFAULT_WIPE_SPEED as RUBBER_WIPE_SPEED,
     DEFAULT_WIPE_Z as RUBBER_WIPE_Z,
@@ -477,7 +477,7 @@ class _FakeConfig:
         return self._printer
 
     def get_name(self):
-        return "klipper_common wipe_nozzle_on_bed"
+        return "klipper_extras wipe_nozzle_on_bed"
 
 
 class _FakePauseResume:
@@ -669,7 +669,7 @@ class _FakeCommonHook:
 def test_cmd_wipe_common_hooks_wrap():
     s = _bed({"retract": 0, "passes": 1})
     runner, gcode = _make_runner(BED_SPEC, s)
-    runner.printer._objects["klipper_common hook"] = _FakeCommonHook(gcode)
+    runner.printer._objects["klipper_extras hook"] = _FakeCommonHook(gcode)
     runner.cmd_wipe(_FakeGcmd())
     assert _script_index(gcode.scripts, "SAVE_GCODE_STATE") < _script_index(
         gcode.scripts, "COMMON_BEFORE"

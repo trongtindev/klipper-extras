@@ -4,13 +4,13 @@ import logging
 
 import pytest
 
-from klipper_common.components import (
+from klipper_extras.components import (
     check_components,
     ensure_feature_components,
     lookup_component,
     missing_components,
 )
-from klipper_common.messages import (
+from klipper_extras.messages import (
     component_optional_missing,
     components_required_missing,
     feature_requires_host,
@@ -57,19 +57,19 @@ def test_optional_missing_warns(caplog):
 
 def test_ensure_requires_host():
     printer = _Printer({})
-    with pytest.raises(ValueError, match=r"\[klipper_common\]"):
+    with pytest.raises(ValueError, match=r"\[klipper_extras\]"):
         ensure_feature_components(printer, "form_tip")
-    assert "[klipper_common]" in feature_requires_host("form_tip")
+    assert "[klipper_extras]" in feature_requires_host("form_tip")
 
 
 def test_ensure_with_host_empty_required():
     host = object()
-    printer = _Printer({"klipper_common": host})
+    printer = _Printer({"klipper_extras": host})
     assert ensure_feature_components(printer, "form_tip") == {}
 
 
 def test_ensure_required_missing_is_config_error():
-    printer = _Printer({"klipper_common": object()})
+    printer = _Printer({"klipper_extras": object()})
     with pytest.raises(ValueError, match="requires Klipper extra"):
         ensure_feature_components(
             printer, "pause_resume", required=("virtual_sdcard", "pause_resume", "respond")

@@ -2,7 +2,7 @@
 # Fixture tests for Moonraker helpers in plugin/install.sh
 #
 # Contract when sourcing the installer as a library:
-#   COMMON_INSTALL_LIB=1 source plugin/install.sh
+#   EXTRAS_INSTALL_LIB=1 source plugin/install.sh
 # Mutators take explicit paths:
 #   add_updater conf repo_root
 #   remove_updater conf
@@ -12,7 +12,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=../plugin/install.sh
-COMMON_INSTALL_LIB=1 source "${ROOT}/plugin/install.sh"
+EXTRAS_INSTALL_LIB=1 source "${ROOT}/plugin/install.sh"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 pass() { echo "OK: $*"; }
@@ -25,11 +25,11 @@ cat > "${tmp}" <<'EOF'
 [server]
 host: 0.0.0.0
 
-# klipper_common - added by plugin/install.sh
-[update_manager klipper_common]
+# klipper_extras - added by plugin/install.sh
+[update_manager klipper_extras]
 type: git_repo
-path: /home/pi/klipper_common_plugin
-origin: https://example.com/klipper_common_plugin.git
+path: /home/pi/klipper-extras
+origin: https://example.com/klipper-extras.git
 primary_branch: main
 install_script: plugin/install.sh
 managed_services: klipper
@@ -45,38 +45,38 @@ pass "moonraker_section_present true"
 moonraker_section_is_managed "${tmp}" || fail "expected managed (adjacent marker)"
 pass "moonraker_section_is_managed true (adjacent)"
 
-# --- filter removes only klipper_common section + installer comment ---
+# --- filter removes only klipper_extras section + installer comment ---
 filter_moonraker_section < "${tmp}" > "${tmp}.out"
 
 if moonraker_section_present "${tmp}.out"; then
   fail "section still present after filter"
 fi
-pass "filter removes klipper_common section"
+pass "filter removes klipper_extras section"
 
 grep -q '\[update_manager other\]' "${tmp}.out" || fail "other section removed"
 grep -q '\[server\]' "${tmp}.out" || fail "server section removed"
-grep -q 'klipper_common - added by plugin' "${tmp}.out" && fail "installer comment not removed"
-grep -q 'klipper_common_plugin' "${tmp}.out" && fail "klipper_common body not removed"
+grep -q 'klipper_extras - added by plugin' "${tmp}.out" && fail "installer comment not removed"
+grep -q 'klipper-extras' "${tmp}.out" && fail "klipper_extras body not removed"
 pass "neighboring sections preserved"
 
 # --- false positive headers must not match ---
 cat > "${tmp}.other" <<'EOF'
 [update_manager client]
 type: web
-[update_manager klipper_common_extra]
+[update_manager klipper_extras_extra]
 type: git_repo
 EOF
 if moonraker_section_present "${tmp}.other"; then
-  fail "over-matched non-klipper_common section"
+  fail "over-matched non-klipper_extras section"
 fi
 pass "exact section name only"
 
 # --- block generator shape (from moonraker.snippet.conf) ---
 block="$(moonraker_update_block "/repo/root" "https://example.com/r.git")"
-echo "${block}" | grep -q '\[update_manager klipper_common\]' || fail "block missing header"
+echo "${block}" | grep -q '\[update_manager klipper_extras\]' || fail "block missing header"
 echo "${block}" | grep -q 'path: /repo/root' || fail "block missing path"
 echo "${block}" | grep -q 'origin: https://example.com/r.git' || fail "block missing origin"
-echo "${block}" | grep -q '# klipper_common - added by plugin/install.sh' || fail "block missing comment"
+echo "${block}" | grep -q '# klipper_extras - added by plugin/install.sh' || fail "block missing comment"
 echo "${block}" | grep -q 'type: git_repo' || fail "block missing type (snippet)"
 echo "${block}" | grep -q 'primary_branch: main' || fail "block missing primary_branch (snippet)"
 echo "${block}" | grep -q 'install_script: plugin/install.sh' || fail "block missing install_script (snippet)"
@@ -103,7 +103,7 @@ add_updater "${tmp}" "/tmp/common-test-repo-B" || rc=$?
 [[ "${rc}" -eq 0 ]] || fail "add_updater rewrite expected 0, got ${rc}"
 grep -q 'path: /tmp/common-test-repo-B' "${tmp}" || fail "path not rewritten"
 grep -q 'path: /tmp/common-test-repo-A' "${tmp}" && fail "old path still present"
-marker_count="$(grep -c 'klipper_common - added by plugin/install.sh' "${tmp}" || true)"
+marker_count="$(grep -c 'klipper_extras - added by plugin/install.sh' "${tmp}" || true)"
 [[ "${marker_count}" -eq 1 ]] || fail "expected one installer marker, got ${marker_count}"
 grep -q '\[server\]' "${tmp}" || fail "server lost on rewrite"
 pass "add_updater managed rewrite"
@@ -113,7 +113,7 @@ cat > "${tmp}.hand" <<'EOF'
 [server]
 host: 0.0.0.0
 
-[update_manager klipper_common]
+[update_manager klipper_extras]
 type: git_repo
 path: /hand/edited/path
 origin: https://example.com/hand.git
@@ -133,9 +133,9 @@ cat > "${tmp}.blank" <<'EOF'
 [server]
 host: 0.0.0.0
 
-# klipper_common - added by plugin/install.sh
+# klipper_extras - added by plugin/install.sh
 
-[update_manager klipper_common]
+[update_manager klipper_extras]
 type: git_repo
 path: /old/path
 origin: https://example.com/old.git
@@ -147,18 +147,18 @@ EOF
 moonraker_section_is_managed "${tmp}.blank" || fail "blank-separated marker should be managed"
 filter_moonraker_section < "${tmp}.blank" > "${tmp}.out"
 moonraker_section_present "${tmp}.out" && fail "section remained after blank-marker filter"
-grep -q 'klipper_common - added by plugin' "${tmp}.out" && fail "orphan marker left after blank-marker filter"
+grep -q 'klipper_extras - added by plugin' "${tmp}.out" && fail "orphan marker left after blank-marker filter"
 grep -q '\[update_manager other\]' "${tmp}.out" || fail "other section lost (blank-marker case)"
 grep -q '\[server\]' "${tmp}.out" || fail "server lost (blank-marker case)"
 pass "adjacent marker with blank lines (managed + filter)"
 
 # --- stray marker far above hand section → not managed; add skips ---
 cat > "${tmp}.stray" <<'EOF'
-# klipper_common - added by plugin/install.sh
+# klipper_extras - added by plugin/install.sh
 [server]
 host: 0.0.0.0
 
-[update_manager klipper_common]
+[update_manager klipper_extras]
 type: git_repo
 path: /hand/with/stray/marker
 origin: https://example.com/hand.git
@@ -177,7 +177,7 @@ pass "stray marker does not force managed rewrite"
 
 # --- section without any marker → not managed ---
 cat > "${tmp}.hand" <<'EOF'
-[update_manager klipper_common]
+[update_manager klipper_extras]
 path: /bare
 EOF
 if moonraker_section_is_managed "${tmp}.hand"; then
@@ -190,11 +190,11 @@ cat > "${tmp}" <<'EOF'
 [server]
 host: 0.0.0.0
 
-# klipper_common - added by plugin/install.sh
-[update_manager klipper_common]
+# klipper_extras - added by plugin/install.sh
+[update_manager klipper_extras]
 type: git_repo
-path: /home/pi/klipper_common_plugin
-origin: https://example.com/klipper_common_plugin.git
+path: /home/pi/klipper-extras
+origin: https://example.com/klipper-extras.git
 primary_branch: main
 install_script: plugin/install.sh
 managed_services: klipper
@@ -217,12 +217,12 @@ remove_updater "${tmp}" || rc=$?
 [[ "${rc}" -eq 1 ]] || fail "remove when absent expected 1, got ${rc}"
 pass "remove_updater skip when absent"
 
-# --- remove hand-edited section (uninstall removes any klipper_common section) ---
+# --- remove hand-edited section (uninstall removes any klipper_extras section) ---
 cat > "${tmp}.hand" <<'EOF'
 [server]
 host: 0.0.0.0
 
-[update_manager klipper_common]
+[update_manager klipper_extras]
 path: /hand/edited
 EOF
 rc=0
@@ -235,10 +235,10 @@ pass "remove_updater removes hand-edited section"
 if (assert_safe_target "/wrong/path" 2>/dev/null); then
   fail "assert_safe_target should refuse wrong path"
 fi
-if (assert_safe_target "/extras/klipper_common" 2>/dev/null); then
+if (assert_safe_target "/extras/klipper_extras" 2>/dev/null); then
   fail "assert_safe_target should refuse path not under klippy/extras"
 fi
-assert_safe_target "/home/pi/klipper/klippy/extras/klipper_common" || \
+assert_safe_target "/home/pi/klipper/klippy/extras/klipper_extras" || \
   fail "assert_safe_target rejected valid path"
 pass "assert_safe_target"
 
@@ -290,7 +290,7 @@ pass "do_moonraker add"
 
 # --- do_moonraker: hand-edit skip → 1, no hint ---
 cat > "${tmp}.hand" <<'EOF'
-[update_manager klipper_common]
+[update_manager klipper_extras]
 path: /hand/edited
 EOF
 moon_hint_snippet=0
@@ -304,7 +304,7 @@ pass "do_moonraker hand-edit no hint"
 count_blanks_before_marker() {
   local conf="$1"
   awk '
-    /^# klipper_common - added by plugin\/install\.sh[[:space:]]*$/ {
+    /^# klipper_extras - added by plugin\/install\.sh[[:space:]]*$/ {
       print blanks
       exit
     }

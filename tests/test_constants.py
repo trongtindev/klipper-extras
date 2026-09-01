@@ -1,4 +1,4 @@
-from klipper_common.constants import (
+from klipper_extras.constants import (
     CONFIG_OPTION_KEYS,
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,
@@ -8,27 +8,27 @@ from klipper_common.constants import (
     heat_floor_from_min_extrude_temp,
     log_level_enabled,
 )
-from klipper_common.features import FEATURE_GCODES, FEATURE_KINDS, FEATURE_LOADERS
-from klipper_common.features.form_tip import (
+from klipper_extras.features import FEATURE_GCODES, FEATURE_KINDS, FEATURE_LOADERS
+from klipper_extras.features.form_tip import (
     KIND as FORM_TIP_KIND,
     OPTION_KEYS as FORM_TIP_KEYS,
 )
-from klipper_common.features.hook import KIND as HOOK_KIND, OPTION_KEYS as HOOK_KEYS
-from klipper_common.features.pause_resume import (
+from klipper_extras.features.hook import KIND as HOOK_KIND, OPTION_KEYS as HOOK_KEYS
+from klipper_extras.features.pause_resume import (
     KIND as PAUSE_KIND,
     OPTION_KEYS as PAUSE_KEYS,
     REQUIRED_COMPONENTS as PAUSE_REQUIRED,
 )
-from klipper_common.features.purge_at_pose import (
+from klipper_extras.features.purge_at_pose import (
     KIND as PURGE_POSE_KIND,
     OPTION_KEYS as PURGE_POSE_KEYS,
 )
-from klipper_common.features.purge_on_bed import (
+from klipper_extras.features.purge_on_bed import (
     KIND as PURGE_BED_KIND,
     OPTION_KEYS as PURGE_BED_KEYS,
 )
-from klipper_common.features.wipe_nozzle_on_bed import KIND as BED_KIND, OPTION_KEYS as BED_KEYS
-from klipper_common.features.wipe_nozzle_on_rubber import (
+from klipper_extras.features.wipe_nozzle_on_bed import KIND as BED_KIND, OPTION_KEYS as BED_KEYS
+from klipper_extras.features.wipe_nozzle_on_rubber import (
     KIND as RUBBER_KIND,
     OPTION_KEYS as RUBBER_KEYS,
 )

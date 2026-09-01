@@ -2,7 +2,7 @@
 
 import pytest
 
-from klipper_common.resolve import (
+from klipper_extras.resolve import (
     as_bool,
     as_float,
     clamp_speed,

@@ -1,4 +1,4 @@
-# G-codes — Klipper Common Plugin
+# G-codes — Klipper Extras
 
 Install / config: [install.md](install.md) · [configuration.md](configuration.md).
 
@@ -8,17 +8,17 @@ Feature commands are documented with that feature (registered only when its sect
 
 | Command | Purpose | When registered |
 |---------|---------|-----------------|
-| `COMMON_STATUS` | Report plugin version, Klipper version, `log_level`, and enabled feature G-codes | `[klipper_common]` |
-| `COMMON_VERSION` | Report plugin version only | `[klipper_common]` |
+| `EXTRAS_STATUS` | Report plugin version, Klipper version, `log_level`, and enabled feature G-codes | `[klipper_extras]` |
+| `EXTRAS_VERSION` | Report plugin version only | `[klipper_extras]` |
 
 No extra parameters.
 
 ```gcode
-COMMON_STATUS
-# klipper_common: version=0.0.1 klipper=v0.13.0-… log_level=info
+EXTRAS_STATUS
+# klipper_extras: version=0.0.1 klipper=v0.13.0-… log_level=info
 
-COMMON_VERSION
-# klipper_common 0.0.1
+EXTRAS_VERSION
+# klipper_extras 0.0.1
 ```
 
 ## Features
@@ -32,4 +32,4 @@ COMMON_VERSION
 | `PURGE_AT_POSE` | [features/purge_at_pose.md](features/purge_at_pose.md) |
 | `PAUSE` `RESUME` `CANCEL_PRINT` | [features/pause_resume.md](features/pause_resume.md) |
 
-`[klipper_common hook]` does not register a command. See [features/hook.md](features/hook.md).
+`[klipper_extras hook]` does not register a command. See [features/hook.md](features/hook.md).

@@ -1,6 +1,6 @@
 # Purge on bed
 
-Enabled only by `[klipper_common purge_on_bed]`. Registers **`PURGE_ON_BED`**. Host `[klipper_common]` is required. At connect, an empty `gcode_macro PURGE_ON_BED` printer object is added so Mainsail / Fluidd list the command (handler stays on `register_command`).
+Enabled only by `[klipper_extras purge_on_bed]`. Registers **`PURGE_ON_BED`**. Host `[klipper_extras]` is required. At connect, an empty `gcode_macro PURGE_ON_BED` printer object is added so Mainsail / Fluidd list the command (handler stays on `register_command`).
 
 **Purge only** — extrudes a pattern on the bed. Does not wipe or clean the nozzle. Call [wipe on bed](wipe_nozzle_on_bed.md) afterwards if you want to scrape.
 
@@ -11,7 +11,7 @@ Resolution (user → Klipper hint → safe default): [configuration.md](../confi
 ## Section
 
 ```ini
-[klipper_common purge_on_bed]
+[klipper_extras purge_on_bed]
 ```
 
 Omitted XY → adaptive (needs `exclude_object` objects at command time). Set both `start_x` and `start_y` for a fixed origin.
@@ -35,7 +35,7 @@ Omitted XY → adaptive (needs `exclude_object` objects at command time). Set bo
 | `travel_speed` | float | `[printer] max_velocity` | mm/s. Set this key to override. Then capped at `max_velocity`. Profile `200` only if that field is missing. |
 | `retract` | float | `[firmware_retraction] retract_length`, else `0.5` | mm; `0` skips retract/recover |
 | `retract_speed` | float | `[firmware_retraction] retract_speed`, else `5` | mm/s |
-| `min_nozzle_temp` | float | see heat | Floor (°C). **Required** unless `nozzle_temperature` is set. Order: `[extruder] min_extrude_temp` (key present only) **+ 5 °C** < `[klipper_common] min_nozzle_temp` < this section. The +5 °C is only for the extruder hint (PID undershoot). User floors are not padded. Do not invent `170`. |
+| `min_nozzle_temp` | float | see heat | Floor (°C). **Required** unless `nozzle_temperature` is set. Order: `[extruder] min_extrude_temp` (key present only) **+ 5 °C** < `[klipper_extras] min_nozzle_temp` < this section. The +5 °C is only for the extruder hint (PID undershoot). User floors are not padded. Do not invent `170`. |
 | `nozzle_temperature` | float | omitted | **No Klipper field.** If set: `M109` to this value. Else `M109` to `min_nozzle_temp` when current is below it (or to the heater target if that is already ≥ the floor). |
 | `fan_speed` | float | `1.0` | **No Klipper field.** 0.0–1.0; restored after purge |
 | `fan` | string | `[fan]` if that object exists, else skip | Missing user-named fan is a config error |
@@ -70,7 +70,7 @@ Does not flip X↔Y. Does not default to `(0, 0)`.
 | `break` | `line` only: rapid +10 mm along the stroke (string break, not a wipe) |
 | `lift` | lift to `travel_z` |
 
-Command wrap (optional `[klipper_common hook]`): [hook.md](hook.md). Order after `SAVE_GCODE_STATE`: common before → these actions → common after → restore in `finally` (no hooks).
+Command wrap (optional `[klipper_extras hook]`): [hook.md](hook.md). Order after `SAVE_GCODE_STATE`: common before → these actions → common after → restore in `finally` (no hooks).
 
 ## G-code
 
@@ -93,6 +93,6 @@ PURGE_ON_BED
 
 ## Status
 
-Host `printer.klipper_common.purge_on_bed`: true when this section is loaded.
+Host `printer.klipper_extras.purge_on_bed`: true when this section is loaded.
 
-Prefix object `printer["klipper_common purge_on_bed"]`: `kind`, `enabled`, `gcode`, `origin_mode`, `start_x`, `start_y`, `purge_z`, `purge_amount`, `style`.
+Prefix object `printer["klipper_extras purge_on_bed"]`: `kind`, `enabled`, `gcode`, `origin_mode`, `start_x`, `start_y`, `purge_z`, `purge_amount`, `style`.

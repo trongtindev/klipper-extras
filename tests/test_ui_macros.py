@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from klipper_common.features.ui_macros import (
+from klipper_extras.features.ui_macros import (
     UiMacroShim,
     register_ui_macro_shims,
     ui_macro_object_name,

@@ -1,6 +1,6 @@
 # Wipe nozzle on rubber
 
-Enabled only by `[klipper_common wipe_nozzle_on_rubber]`. Registers **`WIPE_NOZZLE_ON_RUBBER`**. Host `[klipper_common]` is required. At connect, an empty `gcode_macro WIPE_NOZZLE_ON_RUBBER` printer object is added so Mainsail / Fluidd list the command (handler stays on `register_command`).
+Enabled only by `[klipper_extras wipe_nozzle_on_rubber]`. Registers **`WIPE_NOZZLE_ON_RUBBER`**. Host `[klipper_extras]` is required. At connect, an empty `gcode_macro WIPE_NOZZLE_ON_RUBBER` printer object is added so Mainsail / Fluidd list the command (handler stays on `register_command`).
 
 Independent of [wipe on bed](wipe_nozzle_on_bed.md): this section’s coordinates are the **wiper pad**, not the bed strip. Strokes run along the longer axis; with `pass_offset` 0 they are spaced across the shorter axis so both pad edges are used. Both features may be loaded together.
 
@@ -11,7 +11,7 @@ Resolution (user → Klipper hint → safe default): [configuration.md](../confi
 ## Section
 
 ```ini
-[klipper_common wipe_nozzle_on_rubber]
+[klipper_extras wipe_nozzle_on_rubber]
 start_x: 0
 start_y: 0
 end_x: 40
@@ -43,7 +43,7 @@ Use your pad pose, not the numbers above as a universal machine default.
 
 Speeds `> 0`. `travel_z > wipe_z`. Negative `wipe_z` is a config error. If both `nozzle_temperature` and `min_nozzle_temp` are set, nozzle temp must be `>= min_nozzle_temp`.
 
-Command wrap (optional `[klipper_common hook]`): [hook.md](hook.md). Skipped work skips that action’s hooks. Unknown commands are not a hook failure; use `{ action_raise_error('…') }`.
+Command wrap (optional `[klipper_extras hook]`): [hook.md](hook.md). Skipped work skips that action’s hooks. Unknown commands are not a hook failure; use `{ action_raise_error('…') }`.
 
 ## G-code
 
@@ -62,6 +62,6 @@ WIPE_NOZZLE_ON_RUBBER
 
 ## Status
 
-Host `printer.klipper_common.wipe_nozzle_on_rubber`: true when this section is loaded.
+Host `printer.klipper_extras.wipe_nozzle_on_rubber`: true when this section is loaded.
 
-Prefix object `printer["klipper_common wipe_nozzle_on_rubber"]`: `kind`, `enabled`, `gcode`, geometry, `wipe_z`, `passes`.
+Prefix object `printer["klipper_extras wipe_nozzle_on_rubber"]`: `kind`, `enabled`, `gcode`, geometry, `wipe_z`, `passes`.

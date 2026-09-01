@@ -1,4 +1,4 @@
-# Install Klipper Common Plugin
+# Install Klipper Extras
 
 **Docs:** [Configuration](configuration.md) · [G-codes](gcodes.md) · [Wipe on bed](features/wipe_nozzle_on_bed.md) · [Wipe on rubber](features/wipe_nozzle_on_rubber.md) · [Form tip](features/form_tip.md)
 
@@ -11,15 +11,15 @@
 
 ```bash
 cd ~
-git clone https://github.com/trongtindev/klipper_common_plugin.git
-cd klipper_common_plugin
+git clone https://github.com/trongtindev/klipper-extras.git
+cd klipper-extras
 ./plugin/install.sh
 ```
 
 The install script:
 
-1. Symlinks `plugin/klipper_common` into `$KLIPPER_PATH/klippy/extras/klipper_common` (default `~/klipper`)
-2. Registers `[update_manager klipper_common]` in `moonraker.conf` when found. A section is **managed** only when the installer marker comment sits immediately above it (blank lines allowed). Managed sections get path/origin rewritten to the current clone; sections without that adjacent marker are treated as hand-edited and left alone
+1. Symlinks `plugin/klipper_extras` into `$KLIPPER_PATH/klippy/extras/klipper_extras` (default `~/klipper`)
+2. Registers `[update_manager klipper_extras]` in `moonraker.conf` when found. A section is **managed** only when the installer marker comment sits immediately above it (blank lines allowed). Managed sections get path/origin rewritten to the current clone; sections without that adjacent marker are treated as hand-edited and left alone
 3. Restarts Klipper when the service is active; restarts Moonraker only when the conf was just modified
 
 Non-default paths:
@@ -56,11 +56,11 @@ If no conf is found, install still succeeds; add the update block manually (belo
 
 ## printer.cfg
 
-Add a `[klipper_common]` section (see [configuration.md](configuration.md) and `config/sample-klipper-common.cfg`):
+Add a `[klipper_extras]` section (see [configuration.md](configuration.md) and `config/sample-klipper-extras.cfg`):
 
 ```ini
-[include sample-klipper-common.cfg]
-# or paste [klipper_common] directly
+[include sample-klipper-extras.cfg]
+# or paste [klipper_extras] directly
 ```
 
 Optional features: [wipe on bed](features/wipe_nozzle_on_bed.md) (`config/sample-wipe-nozzle-on-bed.cfg`), [wipe on rubber](features/wipe_nozzle_on_rubber.md) (`config/sample-wipe-nozzle-on-rubber.cfg`).
@@ -83,14 +83,14 @@ Manual fallback — copy the block from `plugin/moonraker.snippet.conf` into `mo
 
 This removes:
 
-- `$KLIPPER_PATH/klippy/extras/klipper_common` (symlink or copy)
-- `[update_manager klipper_common]` from `moonraker.conf` (when present)
+- `$KLIPPER_PATH/klippy/extras/klipper_extras` (symlink or copy)
+- `[update_manager klipper_extras]` from `moonraker.conf` (when present)
 
-Then remove `[klipper_common]` and any `[klipper_common …]` feature sections from `printer.cfg` and restart if services were not restarted.
+Then remove `[klipper_extras]` and any `[klipper_extras …]` feature sections from `printer.cfg` and restart if services were not restarted.
 
 ```bash
 # manual fallback if needed:
-rm -rf ~/klipper/klippy/extras/klipper_common
+rm -rf ~/klipper/klippy/extras/klipper_extras
 sudo systemctl restart klipper
 ```
 

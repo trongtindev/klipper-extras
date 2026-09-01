@@ -1,6 +1,6 @@
 """RESPOND TYPE=command prompt helper."""
 
-from klipper_common.respond_action import (
+from klipper_extras.respond_action import (
     prompt_end,
     prompt_show,
     respond_action,

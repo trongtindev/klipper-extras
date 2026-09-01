@@ -1,6 +1,6 @@
 # Form tip
 
-Enabled only by `[klipper_common form_tip]`. Registers **`FORM_TIP`**. Host `[klipper_common]` is required. At connect, an empty `gcode_macro FORM_TIP` printer object is added so Mainsail / Fluidd list the command (handler stays on `register_command`).
+Enabled only by `[klipper_extras form_tip]`. Registers **`FORM_TIP`**. Host `[klipper_extras]` is required. At connect, an empty `gcode_macro FORM_TIP` printer object is added so Mainsail / Fluidd list the command (handler stays on `register_command`).
 
 Independent of [wipe on bed](wipe_nozzle_on_bed.md) and [wipe on rubber](wipe_nozzle_on_rubber.md). Motion is **extruder-only** (no XYZ movement). Geometry is set via `tip_distance` (total retract from nozzle) and `sep_fast_len` (fast retract portion).
 
@@ -9,7 +9,7 @@ Resolution (user → Klipper hint → named profile / safe default): [configurat
 ## Section
 
 ```ini
-[klipper_common form_tip]
+[klipper_extras form_tip]
 ```
 
 Omitted `profile` → all fields must be user-set (no safe default). Use `profile: a4t_hgx_lite` for the built-in A4T + HGX Lite profile.
@@ -95,6 +95,6 @@ Saves G-code state (`SAVE_GCODE_STATE NAME=FORM_TIP`) after homing checks, befor
 
 ## Status
 
-Host `printer.klipper_common.form_tip`: true when this section is loaded.
+Host `printer.klipper_extras.form_tip`: true when this section is loaded.
 
-Prefix object `printer["klipper_common form_tip"]`: `kind`, `enabled`, `gcode`, `profile`, `tip_distance`, `sep_fast_len`, `sep_slow_len`, `cooling_moves`, `use_skinnydip`.
+Prefix object `printer["klipper_extras form_tip"]`: `kind`, `enabled`, `gcode`, `profile`, `tip_distance`, `sep_fast_len`, `sep_slow_len`, `cooling_moves`, `use_skinnydip`.

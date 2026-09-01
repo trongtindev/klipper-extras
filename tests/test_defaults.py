@@ -1,7 +1,7 @@
 import pytest
 
-from klipper_common.constants import LOG_LEVEL_DEFAULT, LOG_LEVEL_INFO
-from klipper_common.defaults import resolve_settings
+from klipper_extras.constants import LOG_LEVEL_DEFAULT, LOG_LEVEL_INFO
+from klipper_extras.defaults import resolve_settings
 
 
 def test_resolve_empty_user_uses_default():

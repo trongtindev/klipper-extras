@@ -9,9 +9,9 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "klipper_common_plugin"
+name = "klipper-extras"
 dynamic = ["version"]
-description = "Klipper Common Plugin — shared Klipper Python extra"
+description = "Klipper Extras — shared Klipper Python extra"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "GPL-3.0-or-later" }
@@ -26,11 +26,11 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["plugin"]
-include = ["klipper_common*"]
+include = ["klipper_extras*"]
 
-# Single source: plugin/klipper_common/constants.py (KLIPPER_COMMON_VERSION).
+# Single source: plugin/klipper_extras/constants.py (KLIPPER_EXTRAS_VERSION).
 [tool.setuptools.dynamic]
-version = { attr = "klipper_common.constants.KLIPPER_COMMON_VERSION" }
+version = { attr = "klipper_extras.constants.KLIPPER_EXTRAS_VERSION" }
 
 [tool.ruff]
 target-version = "py39"
@@ -62,7 +62,7 @@ ignore = [
 "tests/conftest.py" = ["E402"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["klipper_common"]
+known-first-party = ["klipper_extras"]
 combine-as-imports = true
 
 [tool.ruff.format]

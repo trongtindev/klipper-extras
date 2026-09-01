@@ -2,22 +2,22 @@
 
 import pytest
 
-from klipper_common.constants import CONFIG_OPTION_KEYS
-from klipper_common.features import FEATURE_GCODES, FEATURE_KINDS, FEATURE_LOADERS
-from klipper_common.features.form_tip import (
+from klipper_extras.constants import CONFIG_OPTION_KEYS
+from klipper_extras.features import FEATURE_GCODES, FEATURE_KINDS, FEATURE_LOADERS
+from klipper_extras.features.form_tip import (
     GCODE as FORM_TIP_GCODE,
     KIND as FORM_TIP_KIND,
     OPTION_KEYS as FORM_TIP_KEYS,
 )
-from klipper_common.features.form_tip.constants import PARAM_ALIASES
-from klipper_common.features.form_tip.feature import FormTipRunner, _tip_step_hook
-from klipper_common.features.form_tip.resolve import (
+from klipper_extras.features.form_tip.constants import PARAM_ALIASES
+from klipper_extras.features.form_tip.feature import FormTipRunner, _tip_step_hook
+from klipper_extras.features.form_tip.resolve import (
     overlay_gcode_params,
     plan_tip_steps,
     resolve_tip_settings,
 )
-from klipper_common.features.form_tip.types import FormTipHints
-from klipper_common.features.form_tip.validate import validate_tip
+from klipper_extras.features.form_tip.types import FormTipHints
+from klipper_extras.features.form_tip.validate import validate_tip
 
 HINTS = FormTipHints(max_extrude_only_velocity=300.0)
 
@@ -367,7 +367,7 @@ class _TipConfig:
         return self._printer
 
     def get_name(self):
-        return "klipper_common form_tip"
+        return "klipper_extras form_tip"
 
 
 class _TipGcmd:
@@ -449,7 +449,7 @@ def test_cmd_form_tip_common_hooks_wrap():
         def run_command_after(self, extra=None):
             gcode.run_script_from_command("COMMON_AFTER")
 
-    runner.printer._objects["klipper_common hook"] = _Common()
+    runner.printer._objects["klipper_extras hook"] = _Common()
     runner.cmd_FORM_TIP(_TipGcmd())
     scripts = gcode.scripts
     assert scripts[0] == "SAVE_GCODE_STATE NAME=FORM_TIP"

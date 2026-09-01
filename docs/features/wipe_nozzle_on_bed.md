@@ -1,6 +1,6 @@
 # Wipe nozzle on bed
 
-Enabled only by `[klipper_common wipe_nozzle_on_bed]`. Registers **`WIPE_NOZZLE_ON_BED`**. Host `[klipper_common]` is required. At connect, an empty `gcode_macro WIPE_NOZZLE_ON_BED` printer object is added so Mainsail / Fluidd list the command (handler stays on `register_command`).
+Enabled only by `[klipper_extras wipe_nozzle_on_bed]`. Registers **`WIPE_NOZZLE_ON_BED`**. Host `[klipper_extras]` is required. At connect, an empty `gcode_macro WIPE_NOZZLE_ON_BED` printer object is added so Mainsail / Fluidd list the command (handler stays on `register_command`).
 
 Independent of [wipe on rubber](wipe_nozzle_on_rubber.md). Motion is a **horizontal** strip (same Y, back-and-forth on X). Approach lifts to `travel_z` in place, then moves XY, then drops to `wipe_z`. Geometry is not taken from `bed_mesh` or axis min/max.
 
@@ -9,7 +9,7 @@ Resolution (user → Klipper hint → safe default): [configuration.md](../confi
 ## Section
 
 ```ini
-[klipper_common wipe_nozzle_on_bed]
+[klipper_extras wipe_nozzle_on_bed]
 ```
 
 Omitted XY → `(50, 50) ↔ (100, 50)` (50 mm along X).
@@ -53,7 +53,7 @@ Every action has `before_<action>_gcode` and `after_<action>_gcode` call sites. 
 | `pass` | **each** wipe pass (Jinja `pass_index`) |
 | `lift` | lift to `travel_z` |
 
-Command wrap (optional `[klipper_common hook]`): [hook.md](hook.md). Order after `SAVE_GCODE_STATE`: common before → these actions → common after → restore in `finally` (no hooks). Hooks may move the toolhead; restore still returns XYZ to the pre-command pose.
+Command wrap (optional `[klipper_extras hook]`): [hook.md](hook.md). Order after `SAVE_GCODE_STATE`: common before → these actions → common after → restore in `finally` (no hooks). Hooks may move the toolhead; restore still returns XYZ to the pre-command pose.
 
 Unknown commands are not a hook failure. Use `{ action_raise_error('…') }` to stop.
 
@@ -74,6 +74,6 @@ WIPE_NOZZLE_ON_BED
 
 ## Status
 
-Host `printer.klipper_common.wipe_nozzle_on_bed`: true when this section is loaded.
+Host `printer.klipper_extras.wipe_nozzle_on_bed`: true when this section is loaded.
 
-Prefix object `printer["klipper_common wipe_nozzle_on_bed"]`: `kind`, `enabled`, `gcode`, geometry, `wipe_z`, `passes`.
+Prefix object `printer["klipper_extras wipe_nozzle_on_bed"]`: `kind`, `enabled`, `gcode`, geometry, `wipe_z`, `passes`.

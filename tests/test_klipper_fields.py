@@ -4,10 +4,10 @@ import math
 
 import pytest
 
-from klipper_common.constants import MIN_EXTRUDE_TEMP_HEAT_MARGIN
-from klipper_common.features.purge_motion.hints import collect_purge_hints
-from klipper_common.features.wipe_motion.hints import collect_wipe_hints
-from klipper_common.klipper_fields import (
+from klipper_extras.constants import MIN_EXTRUDE_TEMP_HEAT_MARGIN
+from klipper_extras.features.purge_motion.hints import collect_purge_hints
+from klipper_extras.features.wipe_motion.hints import collect_wipe_hints
+from klipper_extras.klipper_fields import (
     axis_xy_limits,
     filament_diameter,
     max_extrude_cross_section,

@@ -1,15 +1,18 @@
-from klipper_common.constants import (
-    KLIPPER_COMMON_VERSION,
+from klipper_extras.constants import (
+    KLIPPER_EXTRAS_VERSION,
     LOG_LEVEL_INFO,
     LOG_LEVEL_VERBOSE,
     LOG_LEVEL_WARNING,
     ready_lines_for_log_level,
 )
-from klipper_common.klipper_version import MIN_KLIPPER_VERSION
-from klipper_common.messages import (
+from klipper_extras.klipper_version import MIN_KLIPPER_VERSION
+from klipper_extras.messages import (
     components_required_missing,
+    extra_section,
     feature_requires_host,
     klipper_version_too_old,
+    line,
+    pose_required,
     ready_banner,
     ready_detail_lines,
     status_report,
@@ -19,9 +22,9 @@ from klipper_common.messages import (
 
 
 def test_ready_banner_contains_version():
-    line = ready_banner(KLIPPER_COMMON_VERSION)
-    assert KLIPPER_COMMON_VERSION in line
-    assert "klipper_common" in line
+    line = ready_banner(KLIPPER_EXTRAS_VERSION)
+    assert KLIPPER_EXTRAS_VERSION in line
+    assert "klipper_extras" in line
 
 
 def test_ready_lines_warning_empty():
@@ -61,7 +64,19 @@ def test_klipper_too_old_mentions_floor():
 
 def test_feature_host_messages():
     assert "foo" in unknown_feature_prefix("foo")
-    assert "[klipper_common]" in feature_requires_host("wipe_nozzle_on_bed")
+    assert "[klipper_extras]" in feature_requires_host("wipe_nozzle_on_bed")
     missing = components_required_missing("pause_resume", ["respond"])
     assert "respond" in missing
     assert "pause_resume" in missing
+
+
+def test_line_and_pose_required():
+    assert line("hello") == "klipper_extras: hello"
+    assert line("%s must be > 0", "wipe_speed") == "klipper_extras: wipe_speed must be > 0"
+    assert extra_section() == "[klipper_extras]"
+    assert extra_section("hook") == "[klipper_extras hook]"
+    text = pose_required("purge_at_pose", "start_x, start_y, purge_z", "purge pose")
+    assert "[purge_at_pose]" in text
+    assert "start_x, start_y, purge_z" in text
+    assert "purge pose" in text
+    assert text.startswith("klipper_extras:")

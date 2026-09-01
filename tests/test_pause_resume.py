@@ -5,25 +5,25 @@ from pathlib import Path
 
 import pytest
 
-from klipper_common.constants import CONFIG_OPTION_KEYS
-from klipper_common.features import (
+from klipper_extras.constants import CONFIG_OPTION_KEYS
+from klipper_extras.features import (
     FEATURE_GCODES,
     FEATURE_KINDS,
     FEATURE_LOADERS,
     feature_gcode_names,
 )
-from klipper_common.features.pause_resume import (
+from klipper_extras.features.pause_resume import (
     GCODE,
     GCODES,
     KIND,
     OPTION_KEYS,
     REQUIRED_COMPONENTS,
 )
-from klipper_common.features.pause_resume.constants import PAUSE_RESUME_HOOK_ACTIONS
-from klipper_common.features.pause_resume.feature import PauseResumeRunner
-from klipper_common.features.pause_resume.resolve import resolve_pause_settings
-from klipper_common.features.pause_resume.types import PauseResumeHints
-from klipper_common.features.pause_resume.validate import validate_pause
+from klipper_extras.features.pause_resume.constants import PAUSE_RESUME_HOOK_ACTIONS
+from klipper_extras.features.pause_resume.feature import PauseResumeRunner
+from klipper_extras.features.pause_resume.resolve import resolve_pause_settings
+from klipper_extras.features.pause_resume.types import PauseResumeHints
+from klipper_extras.features.pause_resume.validate import validate_pause
 
 HINTS = PauseResumeHints(
     max_velocity=300.0,
@@ -273,7 +273,7 @@ class _Config:
         return self._printer
 
     def get_name(self):
-        return "klipper_common pause_resume"
+        return "klipper_extras pause_resume"
 
     def get(self, key, default=None):
         return default
@@ -287,7 +287,7 @@ def _runner(homed="xyz", can_extrude=True, extras=None, print_state="printing"):
     base = _Base()
     objects = {
         "gcode": gcode,
-        "klipper_common": object(),
+        "klipper_extras": object(),
         "virtual_sdcard": object(),
         "pause_resume": base,
         "respond": object(),
@@ -309,7 +309,7 @@ def test_connect_missing_pause_resume():
     printer = _Printer(
         {
             "gcode": gcode,
-            "klipper_common": object(),
+            "klipper_extras": object(),
             "virtual_sdcard": object(),
             "respond": object(),
         }
@@ -324,7 +324,7 @@ def test_connect_missing_respond():
     printer = _Printer(
         {
             "gcode": gcode,
-            "klipper_common": object(),
+            "klipper_extras": object(),
             "virtual_sdcard": object(),
             "pause_resume": _Base(),
         }
@@ -340,7 +340,7 @@ def test_connect_does_not_steal_until_ready():
     printer = _Printer(
         {
             "gcode": gcode,
-            "klipper_common": object(),
+            "klipper_extras": object(),
             "virtual_sdcard": object(),
             "pause_resume": _Base(),
             "respond": object(),

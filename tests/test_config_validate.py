@@ -1,5 +1,5 @@
-from klipper_common.config_validate import validate_common_config
-from klipper_common.defaults import CommonSettings
+from klipper_extras.config_validate import validate_common_config
+from klipper_extras.defaults import CommonSettings
 
 
 def test_validate_ok():

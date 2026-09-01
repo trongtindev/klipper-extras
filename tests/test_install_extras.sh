@@ -26,18 +26,18 @@ EOF
 
 "${ROOT}/plugin/install.sh" -k "${klipper}" -m "${moon}" >/dev/null
 
-[[ -L "${extras}/klipper_common" ]] || fail "expected extras symlink"
-dest="$(readlink -f "${extras}/klipper_common")"
-[[ "${dest}" == "$(readlink -f "${ROOT}/plugin/klipper_common")" ]] || \
+[[ -L "${extras}/klipper_extras" ]] || fail "expected extras symlink"
+dest="$(readlink -f "${extras}/klipper_extras")"
+[[ "${dest}" == "$(readlink -f "${ROOT}/plugin/klipper_extras")" ]] || \
   fail "symlink dest mismatch: ${dest}"
-grep -q '\[update_manager klipper_common\]' "${moon}" || fail "moonraker section missing"
+grep -q '\[update_manager klipper_extras\]' "${moon}" || fail "moonraker section missing"
 grep -q "path: ${ROOT}" "${moon}" || fail "moonraker path not repo root"
 pass "install symlink + moonraker"
 
 "${ROOT}/plugin/uninstall.sh" -k "${klipper}" -m "${moon}" >/dev/null
 
-[[ -e "${extras}/klipper_common" ]] && fail "extras path remained after uninstall"
-grep -q '\[update_manager klipper_common\]' "${moon}" && fail "moonraker section remained"
+[[ -e "${extras}/klipper_extras" ]] && fail "extras path remained after uninstall"
+grep -q '\[update_manager klipper_extras\]' "${moon}" && fail "moonraker section remained"
 pass "uninstall removes extras + moonraker"
 
 echo ""

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install or uninstall klipper_common into Klipper's extras directory and
+# Install or uninstall klipper_extras into Klipper's extras directory and
 # optionally register/remove the Moonraker update_manager section.
 #
 # Usage: ./install.sh [-k KLIPPER_PATH] [-m MOONRAKER_CONF] [-u] [-h] [KLIPPER_PATH]
@@ -7,7 +7,7 @@
 #        MOONRAKER_CONF (optional override for moonraker.conf path)
 #
 # Pure helpers and mutators are sourcable for tests:
-#   COMMON_INSTALL_LIB=1 source plugin/install.sh
+#   EXTRAS_INSTALL_LIB=1 source plugin/install.sh
 #
 # Mutator exit codes: 0 = mutated, 1 = skipped, 2 = soft-fail
 # find_moonraker_conf [override]: prints path; exit 0 found, 1 not found, 2 override missing
@@ -16,10 +16,10 @@ set -euo pipefail
 
 # Fallback when the clone has no origin remote. Keep in sync with
 # plugin/moonraker.snippet.conf `origin:` (manual-copy default).
-DEFAULT_ORIGIN="https://github.com/trongtindev/klipper_common_plugin.git"
-SECTION_NAME="klipper_common"
+DEFAULT_ORIGIN="https://github.com/trongtindev/klipper-extras.git"
+SECTION_NAME="klipper_extras"
 INSTALLER_MARKER="# ${SECTION_NAME} - added by plugin/install.sh"
-# Exact section: [update_manager klipper_common] (one or more spaces)
+# Exact section: [update_manager klipper_extras] (one or more spaces)
 SECTION_HEADER_RE="^\\[update_manager[[:space:]]+${SECTION_NAME}\\]"
 INSTALLER_MARKER_RE="^# ${SECTION_NAME} - added by plugin/install\\.sh[[:space:]]*$"
 
@@ -51,7 +51,7 @@ Usage: $(basename "$0") [-k KLIPPER_PATH] [-m MOONRAKER_CONF] [-u] [-h] [KLIPPER
 
   -k PATH   Klipper root directory (default: \$KLIPPER_PATH or ~/klipper)
   -m PATH   Path to moonraker.conf (default: auto-detect)
-  -u        Uninstall klipper_common (extras link + Moonraker update section)
+  -u        Uninstall klipper_extras (extras link + Moonraker update section)
   -h        Show this help
 
 Env:
@@ -73,7 +73,7 @@ print_header() {
   echo -e "${C_CYAN}${C_BOLD}"
   cat <<'EOF'
   ============================================================
-                  K L I P P E R   C O M M O N
+                  K L I P P E R   E X T R A S
                          Installer
   ============================================================
 EOF
@@ -143,15 +143,15 @@ detect_install_mode() {
   fi
 }
 
-# Refuse rm -rf unless target is klipper_common under a klippy/extras directory.
+# Refuse rm -rf unless target is klipper_extras under a klippy/extras directory.
 assert_safe_target() {
   local target="$1"
   local base parent
   base="$(basename "${target}")"
   parent="$(dirname "${target}")"
-  if [[ "${base}" != "klipper_common" ]]; then
+  if [[ "${base}" != "klipper_extras" ]]; then
     err "Refusing to remove unexpected path: ${target}"
-    err "Basename must be klipper_common"
+    err "Basename must be klipper_extras"
     exit 1
   fi
   case "${parent}" in
@@ -205,8 +205,8 @@ moonraker_section_present() {
 
 # One adjacency model for filter + managed check.
 # MODE via ENVIRON MOONRAKER_AWK_MODE:
-#   filter  — stdin → stdout without klipper_common section + adjacent installer marker
-#   managed — exit 0 iff klipper_common header exists with adjacent marker (blank lines OK)
+#   filter  — stdin → stdout without klipper_extras section + adjacent installer marker
+#   managed — exit 0 iff klipper_extras header exists with adjacent marker (blank lines OK)
 # Patterns via ENVIRON (not -v): awk -v interprets \[, which breaks the header match.
 _moonraker_awk() {
   SECTION_HEADER_RE="${SECTION_HEADER_RE}" \
@@ -291,7 +291,7 @@ moonraker_section_is_managed() {
   _moonraker_awk managed < "${conf}"
 }
 
-# Pure filter: stdin → stdout without [update_manager klipper_common] and without
+# Pure filter: stdin → stdout without [update_manager klipper_extras] and without
 # its adjacent installer marker (blank lines between marker and header included).
 filter_moonraker_section() {
   _moonraker_awk filter
@@ -399,7 +399,7 @@ _write_moonraker_conf() {
   dir="$(dirname "${conf}")"
   mode="$(_conf_file_mode "${conf}" 2>/dev/null || true)"
 
-  if tmp="$(mktemp "${dir}/.klipper_common.XXXXXX" 2>/dev/null)"; then
+  if tmp="$(mktemp "${dir}/.klipper_extras.XXXXXX" 2>/dev/null)"; then
     :
   elif tmp="$(mktemp 2>/dev/null)"; then
     :
@@ -452,7 +452,7 @@ add_updater() {
   fi
 
   if moonraker_section_present "${conf}" && ! moonraker_section_is_managed "${conf}"; then
-    info "Moonraker update_manager klipper_common already present (hand-edited; path not updated)"
+    info "Moonraker update_manager klipper_extras already present (hand-edited; path not updated)"
     return 1
   fi
 
@@ -475,15 +475,15 @@ remove_updater() {
   fi
 
   if ! moonraker_section_present "${conf}"; then
-    info "No [update_manager klipper_common] section in moonraker.conf"
+    info "No [update_manager klipper_extras] section in moonraker.conf"
     return 1
   fi
 
   if ! _write_moonraker_conf "${conf}" ""; then
-    warn "Could not edit moonraker.conf — remove [update_manager klipper_common] manually"
+    warn "Could not edit moonraker.conf — remove [update_manager klipper_extras] manually"
     return 2
   fi
-  ok "Removed [update_manager klipper_common] from ${conf}"
+  ok "Removed [update_manager klipper_extras] from ${conf}"
   return 0
 }
 
@@ -562,9 +562,9 @@ try_restart() {
 }
 
 # ---------------------------------------------------------------------------
-# Main (skipped when sourced for tests: COMMON_INSTALL_LIB=1)
+# Main (skipped when sourced for tests: EXTRAS_INSTALL_LIB=1)
 # ---------------------------------------------------------------------------
-common_install_main() {
+extras_install_main() {
   local SRCDIR REPO_ROOT UNINSTALL KLIPPER_PATH MOONRAKER_OVERRIDE
   local EXTRAS_PATH TARGET SRC_MODULE
   local INSTALL_MODE PREV_KIND PREV_DETAIL
@@ -598,8 +598,8 @@ common_install_main() {
   fi
 
   EXTRAS_PATH="${KLIPPER_PATH}/klippy/extras"
-  TARGET="${EXTRAS_PATH}/klipper_common"
-  SRC_MODULE="${SRCDIR}/klipper_common"
+  TARGET="${EXTRAS_PATH}/klipper_extras"
+  SRC_MODULE="${SRCDIR}/klipper_extras"
 
   # --- Uninstall ---
   if [[ "${UNINSTALL}" -eq 1 ]]; then
@@ -629,14 +629,14 @@ common_install_main() {
     [[ "${moon_rc}" -eq 0 ]] && try_restart moonraker "Moonraker" || true
 
     steps=(
-      "Remove [klipper_common] from printer.cfg (if present)"
+      "Remove [klipper_extras] from printer.cfg (if present)"
       "Optionally delete the git clone directory"
     )
     if [[ "${extras_removed}" -eq 1 && "${klip_rc}" -ne 0 ]]; then
       steps+=("FIRMWARE_RESTART if services were not restarted")
     fi
     if [[ "${extras_removed}" -eq 1 || "${moon_rc}" -eq 0 ]]; then
-      print_done "klipper_common uninstalled" "${steps[@]}"
+      print_done "klipper_extras uninstalled" "${steps[@]}"
     else
       print_done "uninstall complete (nothing to remove)" "${steps[@]}"
     fi
@@ -695,7 +695,7 @@ common_install_main() {
 
   steps=()
   [[ "${INSTALL_MODE}" == "new" ]] && \
-    steps+=("Add [klipper_common] to printer.cfg (see config/sample-klipper-common.cfg)")
+    steps+=("Add [klipper_extras] to printer.cfg (see config/sample-klipper-extras.cfg)")
   # Snippet hint: conf missing or soft-fail — not hand-edit skip (moon_hint_snippet).
   if [[ "${moon_hint_snippet}" -eq 1 ]]; then
     steps+=("Add Moonraker update manager block (optional): copy plugin/moonraker.snippet.conf")
@@ -703,15 +703,15 @@ common_install_main() {
   [[ "${klip_rc}" -ne 0 ]] && steps+=("FIRMWARE_RESTART (if Klipper was not restarted)")
   [[ "${INSTALL_MODE}" == "upgrade" ]] && \
     steps+=("Check printer.cfg if sample config gained new options")
-  steps+=("Verify with: COMMON_STATUS")
+  steps+=("Verify with: EXTRAS_STATUS")
 
   if [[ "${INSTALL_MODE}" == "upgrade" ]]; then
-    print_done "klipper_common upgraded successfully" "${steps[@]}"
+    print_done "klipper_extras upgraded successfully" "${steps[@]}"
   else
-    print_done "klipper_common installed successfully" "${steps[@]}"
+    print_done "klipper_extras installed successfully" "${steps[@]}"
   fi
 }
 
-if [[ "${COMMON_INSTALL_LIB:-0}" != "1" ]]; then
-  common_install_main "$@"
+if [[ "${EXTRAS_INSTALL_LIB:-0}" != "1" ]]; then
+  extras_install_main "$@"
 fi
