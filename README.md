@@ -2,7 +2,7 @@
 
 A **Klipper Python extra** (`[klipper_extras]`): a small host plus optional, independent features for nozzle wipe, purge, form tip, pause/resume, and command hooks.
 
-It is **not** a PyPI package and **not** a pile of Jinja macros. Software lives under `plugin/`, `tests/`, `docs/`, `config/`. Runtime is Klipper extras (symlink via `plugin/install.sh`).
+Software lives under `plugin/`, `tests/`, `docs/`, `config/`. Runtime is Klipper extras (symlink via `plugin/install.sh`), not PyPI.
 
 Requires **Klipper ≥ v0.13.0** (checked at load).
 

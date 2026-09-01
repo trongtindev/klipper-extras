@@ -50,6 +50,7 @@ def test_sample_and_docs_keys_subset():
     assert "PAUSE" in doc
     assert "CANCEL_PRINT" in doc
     assert "park_x" in doc
+    assert "[respond]" in doc
     assert "[include mainsail.cfg]" in doc
 
 

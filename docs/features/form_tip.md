@@ -1,6 +1,6 @@
 # Form tip
 
-Enabled only by `[klipper_extras form_tip]`. Registers **`FORM_TIP`**. Host `[klipper_extras]` is required. At connect, an empty `gcode_macro FORM_TIP` printer object is added so Mainsail / Fluidd list the command (handler stays on `register_command`).
+Enabled only by `[klipper_extras form_tip]`. Registers **`FORM_TIP`**. Host `[klipper_extras]` is required. At connect, an empty `gcode_macro FORM_TIP` printer object is added so frontends list the command (handler stays on `register_command`).
 
 Independent of [wipe on bed](wipe_nozzle_on_bed.md) and [wipe on rubber](wipe_nozzle_on_rubber.md). Motion is **extruder-only** (no XYZ movement). Geometry is set via `tip_distance` (total retract from nozzle) and `sep_fast_len` (fast retract portion).
 

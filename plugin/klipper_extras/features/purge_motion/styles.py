@@ -1,11 +1,11 @@
-"""Bed purge styles (KAMP line + voron). Pure; offsets are relative, not machine pose."""
+"""Bed purge styles (line + voron). Pure; offsets are relative, not machine pose."""
 
 from __future__ import annotations
 
 from .constants import ALONG_Y, STYLE_LINE, STYLE_VORON
 from .types import PurgeStroke
 
-# KAMP VORON_PURGE fractions of style_size (origin = bottom-left).
+# Voron-style fractions of style_size (origin = bottom-left).
 VORON_STROKES = (
     ((0.0, 0.5), (0.289, 1.0), 0.25),
     ((0.789, 1.0), (0.211, 0.0), 0.5),
@@ -25,7 +25,7 @@ def line_strokes(origin_x: float, origin_y: float, length: float, along: str) ->
 
 
 def voron_strokes(origin_x: float, origin_y: float, size: float) -> tuple:
-    """Three logo strokes relative to origin (KAMP VORON_PURGE)."""
+    """Three logo strokes relative to origin."""
     strokes = []
     for (sx, sy), (ex, ey), frac in VORON_STROKES:
         strokes.append(

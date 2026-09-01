@@ -1,8 +1,8 @@
 # Pause / resume / cancel
 
-Enabled only by `[klipper_extras pause_resume]`. Takes over **`PAUSE`**, **`RESUME`**, and **`CANCEL_PRINT`** (the names Mainsail / Fluidd / KlipperScreen send). Host `[klipper_extras]` is required.
+Enabled only by `[klipper_extras pause_resume]`. Takes over **`PAUSE`**, **`RESUME`**, and **`CANCEL_PRINT`**. Host `[klipper_extras]` is required.
 
-Klipper’s `[pause_resume]` extra only pauses the SD job and saves `PAUSE_STATE`. This feature adds retract, Z-hop, optional XY park, cancel cleanup, and Mainsail [macro prompts](https://docs.mainsail.xyz/features/macro-prompts/) via `RESPOND TYPE=command`. It does **not** copy Mainsail/Fluidd Jinja macros.
+Klipper’s `[pause_resume]` extra pauses the SD job and saves `PAUSE_STATE`. This feature adds retract, Z-hop, optional XY park, cancel cleanup, and web prompts via `RESPOND TYPE=command`.
 
 Resolution (user → Klipper hint → safe default): [configuration.md](../configuration.md). Comment template: [`config/sample-pause-resume.cfg`](../../config/sample-pause-resume.cfg). Owned keys: `features/pause_resume/` `OPTION_KEYS`.
 
@@ -16,11 +16,11 @@ Declared as `REQUIRED_COMPONENTS`. Missing any at connect is a config error (no 
 | `[pause_resume]` | Stock BASE (`cmd_PAUSE` / `cmd_RESUME` / `cmd_CANCEL_PRINT`) |
 | `[respond]` | `RESPOND TYPE=command` (web prompts) |
 
-This extra **replaces** `PAUSE`, `RESUME`, and `CANCEL_PRINT` at `klippy:ready` (after `[gcode_macro]` `rename_existing`). Do **not** copy Mainsail/Fluidd Jinja macros. At `klippy:connect` it registers empty printer objects `gcode_macro PAUSE`, `gcode_macro RESUME`, and `gcode_macro CANCEL_PRINT` (`features/ui_macros.py`) so Mainsail / Fluidd list them as macros. Those objects do not handle G-code. If a real `[gcode_macro PAUSE]` (etc.) already exists, that name is skipped (any case).
+This extra **replaces** `PAUSE`, `RESUME`, and `CANCEL_PRINT` at `klippy:ready` (after `[gcode_macro]` `rename_existing`). At `klippy:connect` it registers empty printer objects `gcode_macro PAUSE`, `gcode_macro RESUME`, and `gcode_macro CANCEL_PRINT` (`features/ui_macros.py`) so frontends list them. Those objects do not handle G-code. If a real `[gcode_macro PAUSE]` (etc.) already exists, that name is skipped (any case).
 
-Mainsail’s **setup checklist** (`gcode_macro pause is not defined in config`) reads **file** sections in `printer.configfile.config`, not printer objects. The Macros panel and the Pause button use the registered commands. That checklist warning does not mean PAUSE is missing. Do not add dummy Jinja macros only to silence it.
+Put `[virtual_sdcard]`, `[pause_resume]`, and `[respond]` in `printer.cfg`. Missing any required extra is a config error at connect. Leave `CLEAR_PAUSE` on stock Klipper.
 
-Put `[virtual_sdcard]`, `[pause_resume]`, and `[respond]` in `printer.cfg`. `[include mainsail.cfg]` / `fluidd.cfg` is optional for those extras; if included, the three Jinja macros will not run. Missing any required extra is a config error at connect. Leave `CLEAR_PAUSE` on stock Klipper.
+MainsailOS adds `[include mainsail.cfg]` by default. That file registers `PAUSE`, `RESUME`, and `CANCEL_PRINT`. Remove the include (keep the three extras above in `printer.cfg`).
 
 ## Section
 

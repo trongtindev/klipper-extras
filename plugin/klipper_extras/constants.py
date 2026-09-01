@@ -26,7 +26,7 @@ def extra_object(kind: Optional[str] = None) -> str:
 
 # Seconds after klippy:ready before console banner via gcode.respond_info.
 # Moonraker only calls gcode/subscribe_output after it observes READY (poll
-# interval ~0.25s); messages during the ready callback never reach Mainsail.
+# interval ~0.25s); messages during the ready callback never reach the web console.
 ANNOUNCE_CONSOLE_DELAY = 1.0
 
 # Plugin log_level ladder (config option + ready-banner gate).

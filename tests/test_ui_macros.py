@@ -1,4 +1,4 @@
-"""Tests for Mainsail/Fluidd gcode_macro UI status objects."""
+"""Tests for gcode_macro UI status objects."""
 
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 # Wipe nozzle on bed
 
-Enabled only by `[klipper_extras wipe_nozzle_on_bed]`. Registers **`WIPE_NOZZLE_ON_BED`**. Host `[klipper_extras]` is required. At connect, an empty `gcode_macro WIPE_NOZZLE_ON_BED` printer object is added so Mainsail / Fluidd list the command (handler stays on `register_command`).
+Enabled only by `[klipper_extras wipe_nozzle_on_bed]`. Registers **`WIPE_NOZZLE_ON_BED`**. Host `[klipper_extras]` is required. At connect, an empty `gcode_macro WIPE_NOZZLE_ON_BED` printer object is added so frontends list the command (handler stays on `register_command`).
 
 Independent of [wipe on rubber](wipe_nozzle_on_rubber.md). Motion is a **horizontal** strip (same Y, back-and-forth on X). Approach lifts to `travel_z` in place, then moves XY, then drops to `wipe_z`. Geometry is not taken from `bed_mesh` or axis min/max.
 

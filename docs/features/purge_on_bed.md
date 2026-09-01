@@ -1,10 +1,10 @@
 # Purge on bed
 
-Enabled only by `[klipper_extras purge_on_bed]`. Registers **`PURGE_ON_BED`**. Host `[klipper_extras]` is required. At connect, an empty `gcode_macro PURGE_ON_BED` printer object is added so Mainsail / Fluidd list the command (handler stays on `register_command`).
+Enabled only by `[klipper_extras purge_on_bed]`. Registers **`PURGE_ON_BED`**. Host `[klipper_extras]` is required. At connect, an empty `gcode_macro PURGE_ON_BED` printer object is added so frontends list the command (handler stays on `register_command`).
 
-**Purge only** — extrudes a pattern on the bed. Does not wipe or clean the nozzle. Call [wipe on bed](wipe_nozzle_on_bed.md) afterwards if you want to scrape.
+**Purge only** — extrudes a pattern on the bed. Call [wipe on bed](wipe_nozzle_on_bed.md) afterwards if you want to scrape.
 
-Independent of [purge at pose](purge_at_pose.md). Styles are KAMP `LINE_PURGE` / `VORON_PURGE` patterns (`style: line` or `voron`). Origin is either a **fixed** user `start_x`/`start_y` or **adaptive** from `exclude_object` (both XY omitted). Geometry is not taken from `bed_mesh` or axis min/max (out of range is an error, not a clamp).
+Independent of [purge at pose](purge_at_pose.md). Styles: `line` or `voron`. Origin is either a **fixed** user `start_x`/`start_y` or **adaptive** from `exclude_object` (both XY omitted). Geometry is not taken from `bed_mesh` or axis min/max (out of range is an error, not a clamp).
 
 Resolution (user → Klipper hint → safe default): [configuration.md](../configuration.md). When omitted, each key follows [Klipper sources](../configuration.md#klipper-sources). Comment template: [`config/sample-purge-on-bed.cfg`](../../config/sample-purge-on-bed.cfg). Owned keys: `features/purge_on_bed/` `OPTION_KEYS`.
 
@@ -20,7 +20,7 @@ Omitted XY → adaptive (needs `exclude_object` objects at command time). Set bo
 
 | Option | Type | Default | Notes |
 |--------|------|---------|--------|
-| `style` | string | `line` | **No Klipper field.** `line` \| `voron` (KAMP builtins). |
+| `style` | string | `line` | **No Klipper field.** `line` \| `voron`. |
 | `start_x` `start_y` | float | omitted | mm. **No Klipper pose field.** **Both** → fixed origin. **Both omitted** → adaptive from `[exclude_object]`. One only → config error. |
 | `purge_length` | float | `purge_amount` | mm XY of the `line` stroke. **No Klipper field.** Error if set with `style: voron`. |
 | `purge_margin` | float | `10` | mm. **No Klipper field.** Adaptive only (AABB min − this). Ignored when XY is fixed. |

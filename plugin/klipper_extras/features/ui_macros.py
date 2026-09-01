@@ -1,9 +1,9 @@
-"""Mainsail/Fluidd gcode_macro status objects for action features.
+"""Frontend gcode_macro status objects for action features.
 
 Frontends list printer objects named ``gcode_macro NAME``. Extra commands
 registered with ``gcode.register_command`` do not create those objects.
-Empty status objects (same pattern as klicky_probe) expose the feature
-G-code on the Macros panel. They do not handle G-code.
+Empty status objects expose the feature G-code on the Macros panel. They
+do not handle G-code.
 
 Call after full config load (``klippy:connect``) so a real
 ``[gcode_macro NAME]`` section is never short-circuited by ``load_object``.

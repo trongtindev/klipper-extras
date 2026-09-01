@@ -51,7 +51,7 @@ Two layers. **The feature that owns the action owns that layer’s hook keys, te
 | Parse section keys | `hook/load.py` `parse_user_config` (skips `*_gcode` / `on_hook_fail`) | Copy `config_has` + skip-hook-key loops into each feature |
 | Feature hook option keys | `hook/policy.py` `hook_option_keys_for_actions(THAT_FEATURE_ACTIONS)` unioned into that feature’s `OPTION_KEYS` | Hand-roll `before_%s_gcode` loops; add `debug` or `command_*_gcode` to a wipe/form_tip section |
 | `debug` console log | `[klipper_extras hook]` `debug` only (no section → no debug). `call_hook` logs **every** invoke, including empty templates (`(empty)`) | A second debug flag on another section; skip empty templates in the debug log; `print()` / extra `respond_info` at call sites |
-| Mainsail/Fluidd list extra G-codes | `features/ui_macros.py` `register_ui_macro_shims` at `klippy:connect` | Copy `UiMacroShim` / `add_object("gcode_macro …")` into a feature; register in `__init__` (short-circuits a real `[gcode_macro NAME]`) |
+| Frontend `gcode_macro` list | `features/ui_macros.py` `register_ui_macro_shims` at `klippy:connect` | Copy `UiMacroShim` / `add_object("gcode_macro …")` into a feature; register in `__init__` (short-circuits a real `[gcode_macro NAME]`) |
 
 New action → add the name to that feature’s `*_HOOK_ACTIONS` tuple, one `self._hooked(...)` call site (`bind_hooked` in `__init__`), docs + sample. Do not add hook option keys by hand.
 
@@ -87,7 +87,7 @@ Do **not** invent config keys. Host keys: `CONFIG_OPTION_KEYS`. Each feature: it
 
 ### No hardcoding
 
-- No machine-specific XY/Z/speed (no Bambu/Voron/… coordinates) in code, tests, or sample as if they were universal.
+- No printer-model XY/Z/speed in code, tests, or sample as if they were universal.
 - Numeric literals used in more than one place in the **same owner** → that owner’s `constants.py`.
 - Geometry/speed/temp that Klipper already has → read or derive from those fields; do not duplicate as magic numbers.
 - If Klipper has no field (e.g. rubber wiper pose), do **not** invent one from axis max / `safe_z_home`. Safe default or require the user key; then validate.
@@ -121,7 +121,7 @@ Do **not** invent config keys. Host keys: `CONFIG_OPTION_KEYS`. Each feature: it
 | Hook invoke (render/run, debug, command wrap) | `features/hook/execute.py` (`bind_hooked`, `run_hooked_action`, `call_common_hook`, `call_hook`) |
 | Hook load (templates, `parse_user_config`, `on_hook_fail`, `debug`) | `features/hook/load.py` |
 | Hook key helper / `on_hook_fail` resolve | `features/hook/policy.py` (`hook_option_keys_for_actions`) |
-| Mainsail/Fluidd gcode_macro status objects | `features/ui_macros.py` (`register_ui_macro_shims`) |
+| Frontend `gcode_macro` status objects | `features/ui_macros.py` (`register_ui_macro_shims`) |
 | Host option reference | `docs/configuration.md` |
 | Host G-codes | `docs/gcodes.md` |
 | Feature option + G-code reference | `docs/features/<kind>.md` |
@@ -132,6 +132,8 @@ Do **not** invent config keys. Host keys: `CONFIG_OPTION_KEYS`. Each feature: it
 ## Docs + sample stay in the same change
 
 Any add/remove/rename or behavior/default change of `[klipper_extras]` options, prefix kinds, feature options, G-codes, hint/default behavior, installer/Moonraker, or Klipper version floor must update the matching docs (table above). Host docs stay host-only; feature docs stay under `docs/features/`. README sketch only if the user-visible **host** minimal config changes.
+
+Write what this extra **does**. Do not contrast with third-party projects used only as a reference. Do not write “does not copy …”. Do not name those projects in docs, samples, or comments. Do not mention deleted features, options, G-codes, or actions.
 
 ## No dead code
 
@@ -161,7 +163,7 @@ Do not ship a temporary patch, shim, or workaround to “get unstuck.” Fix the
 - Long user/log text → that owner’s `messages.py` as `msg.foo(...)`. No `print()`.
 - Keep `Optional[X]` / `typing.List` style (Ruff UP006/007/035/045 ignored). Keep `%` formatting (UP031 ignored).
 
-Ready console banner is **deferred** (`ANNOUNCE_CONSOLE_DELAY`): Moonraker subscribes after READY; emitting in the ready handler never reaches Mainsail.
+Ready console banner is **deferred** (`ANNOUNCE_CONSOLE_DELAY`): Moonraker subscribes after READY; emitting in the ready handler never reaches the web console.
 
 ## Commands
 

@@ -1,6 +1,6 @@
 # Install Klipper Extras
 
-**Docs:** [Configuration](configuration.md) · [G-codes](gcodes.md) · [Wipe on bed](features/wipe_nozzle_on_bed.md) · [Wipe on rubber](features/wipe_nozzle_on_rubber.md) · [Form tip](features/form_tip.md)
+**Docs:** [Configuration](configuration.md) · [G-codes](gcodes.md) · [Wipe on bed](features/wipe_nozzle_on_bed.md) · [Wipe on rubber](features/wipe_nozzle_on_rubber.md) · [Form tip](features/form_tip.md) · [Purge on bed](features/purge_on_bed.md) · [Purge at pose](features/purge_at_pose.md) · [Pause / resume](features/pause_resume.md) · [Hooks](features/hook.md)
 
 ## Requirements
 
@@ -63,7 +63,7 @@ Add a `[klipper_extras]` section (see [configuration.md](configuration.md) and `
 # or paste [klipper_extras] directly
 ```
 
-Optional features: [wipe on bed](features/wipe_nozzle_on_bed.md) (`config/sample-wipe-nozzle-on-bed.cfg`), [wipe on rubber](features/wipe_nozzle_on_rubber.md) (`config/sample-wipe-nozzle-on-rubber.cfg`).
+Optional features: prefix sections and `config/sample-*.cfg` (see [configuration.md](configuration.md)).
 
 ## Moonraker update manager
 

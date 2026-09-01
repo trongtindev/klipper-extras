@@ -1,4 +1,4 @@
-"""Emit Klipper RESPOND TYPE=command / error (Mainsail // action: prompts).
+"""Emit Klipper RESPOND TYPE=command / error (web ``// action:`` prompts).
 
 Requires the [respond] extra. No klippy import. Callers own payload text.
 """

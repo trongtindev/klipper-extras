@@ -1,6 +1,6 @@
 # Wipe nozzle on rubber
 
-Enabled only by `[klipper_extras wipe_nozzle_on_rubber]`. Registers **`WIPE_NOZZLE_ON_RUBBER`**. Host `[klipper_extras]` is required. At connect, an empty `gcode_macro WIPE_NOZZLE_ON_RUBBER` printer object is added so Mainsail / Fluidd list the command (handler stays on `register_command`).
+Enabled only by `[klipper_extras wipe_nozzle_on_rubber]`. Registers **`WIPE_NOZZLE_ON_RUBBER`**. Host `[klipper_extras]` is required. At connect, an empty `gcode_macro WIPE_NOZZLE_ON_RUBBER` printer object is added so frontends list the command (handler stays on `register_command`).
 
 Independent of [wipe on bed](wipe_nozzle_on_bed.md): this section’s coordinates are the **wiper pad**, not the bed strip. Strokes run along the longer axis; with `pass_offset` 0 they are spaced across the shorter axis so both pad edges are used. Both features may be loaded together.
 
