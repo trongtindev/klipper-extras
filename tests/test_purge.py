@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from klipper_extras.features.gcode import gcode_f
 from klipper_extras.features.purge_at_pose.constants import (
     GCODE as POSE_GCODE,
     KIND as POSE_KIND,
@@ -410,8 +411,9 @@ class _FakeToolhead:
 
 
 class _FakeGcmd:
-    def __init__(self):
+    def __init__(self, params=None):
         self.infos = []
+        self._params = params or {}
 
     def error(self, text):
         raise RuntimeError(text)
@@ -420,7 +422,18 @@ class _FakeGcmd:
         self.infos.append(text)
 
     def get_float(self, name, default=None):
-        return default
+        return self._params.get(name, default)
+
+    def get_int(self, name, default=None, minval=None, maxval=None):
+        val = self._params.get(name, default)
+        if val is None:
+            return default
+        iv = int(val)
+        if minval is not None and iv < minval:
+            raise RuntimeError("%s must be >= %s" % (name, minval))
+        if maxval is not None and iv > maxval:
+            raise RuntimeError("%s must be <= %s" % (name, maxval))
+        return iv
 
 
 class _FileConfig:
@@ -563,18 +576,27 @@ def test_cmd_purge_pose_paused_holds_z():
     runner, gcode = _make_pose_runner(is_paused=True)
     s = runner.settings
     runner.cmd_purge(_FakeGcmd())
-    lift_z = "G1 Z%.3f F%.0f" % (s.travel_z, s.travel_speed * 60.0)
+    lift_z = "G1 Z%.3f %s" % (s.travel_z, gcode_f(s.travel_speed))
     assert lift_z not in gcode.scripts
     assert not any(script.startswith("G1 Z") for script in gcode.scripts)
     assert any(script.startswith("G1 X") and "Z" not in script for script in gcode.scripts)
     assert any(script.startswith("M109") for script in gcode.scripts)
     assert gcode.scripts[0].startswith("SAVE_GCODE_STATE")
-    assert "MOVE=1" in gcode.scripts[-1]
+    assert "MOVE=0" in gcode.scripts[-1]
+
+
+def test_cmd_purge_restore_move_1():
+    runner, gcode = _make_pose_runner()
+    s = runner.settings
+    runner.cmd_purge(_FakeGcmd({"MOVE": 1}))
+    restore = gcode.scripts[-1]
+    assert "MOVE=1" in restore
+    assert "MOVE_SPEED=%.0f" % (s.travel_speed,) in restore
 
 
 def test_cmd_purge_pose_not_paused_moves_z():
     runner, gcode = _make_pose_runner(is_paused=False)
     s = runner.settings
     runner.cmd_purge(_FakeGcmd())
-    lift_z = "G1 Z%.3f F%.0f" % (s.travel_z, s.travel_speed * 60.0)
+    lift_z = "G1 Z%.3f %s" % (s.travel_z, gcode_f(s.travel_speed))
     assert lift_z in gcode.scripts

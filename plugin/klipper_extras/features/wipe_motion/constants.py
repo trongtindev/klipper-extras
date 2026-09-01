@@ -19,7 +19,7 @@ PAUSED_REFUSE = "refuse"
 PAUSED_HOLD_Z_IF_OMITTED = "hold_z_if_omitted"
 USER_Z_KEYS = ("wipe_z", "z_hop", "travel_z")
 
-# Feature G-code wrap. NAME is the feature G-code. MOVE_SPEED is mm/s (Klipper).
+# Feature G-code wrap. NAME is the feature G-code. MOVE is 0|1. MOVE_SPEED is mm/s (Klipper).
 CMD_ABSOLUTE = "G90"
 CMD_SAVE_GCODE_STATE = "SAVE_GCODE_STATE NAME=%s"
-CMD_RESTORE_GCODE_STATE = "RESTORE_GCODE_STATE NAME=%s MOVE=1 MOVE_SPEED=%.0f"
+CMD_RESTORE_GCODE_STATE = "RESTORE_GCODE_STATE NAME=%s MOVE=%d MOVE_SPEED=%.0f"

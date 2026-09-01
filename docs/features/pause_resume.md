@@ -57,7 +57,7 @@ Omitted `park_x` / `park_y` → **no XY move**. Pause retracts (if the nozzle is
 
 Job state is Klipper `print_stats.state` (loaded with `[virtual_sdcard]`) plus `[pause_resume]` `is_paused`. Each command checks that **before** retract, park, heaters, command hooks, or BASE.
 
-Stock Klipper saves `SAVE_GCODE_STATE NAME=PAUSE_STATE` inside BASE `PAUSE` and restores it on BASE `RESUME` (`MOVE=1`). This feature does **not** save/restore in `finally` on `PAUSE` (the pause spans two commands).
+Stock Klipper may save `SAVE_GCODE_STATE NAME=PAUSE_STATE` inside BASE `PAUSE` and restore it on BASE `RESUME` (non-SD, `MOVE=1`). This feature does **not** save/restore in `finally` on these commands (the pause spans two commands). Park stays until `RESUME`; extras remembers extruder target, idle timeout, and unretract length.
 
 ### `PAUSE`
 

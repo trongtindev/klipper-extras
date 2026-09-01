@@ -45,13 +45,17 @@ Command wrap (optional `[klipper_extras hook]`): [hook.md](hook.md).
 
 ## G-code
 
-`WIPE_NOZZLE_ON_RUBBER` — no parameters (geometry and speeds come from this section).
+```
+WIPE_NOZZLE_ON_RUBBER [MOVE=<0|1>]
+```
+
+Geometry and speeds come from this section. `MOVE` is restore-only (`0` omitted): `0` restores mode and speed override without XYZ; `1` also returns XYZ.
 
 If `[pause_resume]` reports paused: any of `wipe_z`, `z_hop`, `travel_z` **set on this section** is an error (Z would leave the pause height). With those keys omitted, wipe is XY at the current Z (no hop / lower / lift; restore does not lift to `z_hop`; no heat / retract / fan). That is only safe if current Z already clears the print — this plugin’s `PAUSE` hops; stock Klipper does not. Uncommenting `wipe_z` in the sample blocks pause. Printing (including `PRINT_START`) is allowed.
 
 Call from `PRINT_START` **after XYZ are homed**. Heat the nozzle first, or set `nozzle_temperature` here.
 
-Approach lifts to `travel_z` in place, then moves XY, then drops to `wipe_z`. Saves G-code state (`SAVE_GCODE_STATE NAME=WIPE_NOZZLE_ON_RUBBER`) after homing checks, before command wrap and work (including heat). Restores in `finally` (`RESTORE_GCODE_STATE NAME=WIPE_NOZZLE_ON_RUBBER MOVE=1`) so coordinate mode, speed override, and XYZ return to the pre-wipe values. Fan is restored separately. Retract is not undone. While paused with Z keys omitted, approach/restore do not change Z, and heat / retract / fan are skipped.
+Approach lifts to `travel_z` in place, then moves XY, then drops to `wipe_z`. Saves G-code state (`SAVE_GCODE_STATE NAME=WIPE_NOZZLE_ON_RUBBER`) after homing checks, before command wrap and work (including heat). Restores in `finally` (`RESTORE_GCODE_STATE NAME=WIPE_NOZZLE_ON_RUBBER MOVE=<0|1>`, default `0`) so coordinate mode and speed override return. `MOVE=1` also returns XYZ to the pre-wipe pose. Fan is restored separately. Retract is not undone. While paused with Z keys omitted, approach/restore do not change Z, and heat / retract / fan are skipped.
 
 ```gcode
 G28

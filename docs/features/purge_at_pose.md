@@ -55,17 +55,17 @@ Use your chute / bucket / park pose, not the numbers above as a universal machin
 | `retract` | `G1 E−retract` |
 | `lift` | lift to `travel_z` |
 
-Command wrap: [hook.md](hook.md). `SAVE_GCODE_STATE NAME=PURGE_AT_POSE` after homing; restore in `finally` (`MOVE=1`). Fan restored separately. Retract is not undone. If `[quad_gantry_level]` or `[z_tilt]` is loaded and has not been applied, a console warning is printed and purge continues (does not abort).
+Command wrap: [hook.md](hook.md). `SAVE_GCODE_STATE NAME=PURGE_AT_POSE` after homing; restore in `finally` (`MOVE` from the command, default `0`). Fan restored separately. Retract is not undone. If `[quad_gantry_level]` or `[z_tilt]` is loaded and has not been applied, a console warning is printed and purge continues (does not abort).
 
 If `[pause_resume]` reports paused: XY travel to the pose at the **current Z** (no hop / lower / lift; restore does not lift to `travel_z`). Heat / fan / E (tip, purge, retract) still run. `purge_z` on this section is for non-paused use only. That is only safe if current Z already clears the print — this plugin’s `PAUSE` hops; stock Klipper does not. Printing (including `PRINT_START`) uses hop / `travel_z` / `purge_z` as usual.
 
 ## G-code
 
 ```
-PURGE_AT_POSE [PURGE_AMOUNT=<mm>] [PURGE_LENGTH=<mm>]
+PURGE_AT_POSE [PURGE_AMOUNT=<mm>] [PURGE_LENGTH=<mm>] [MOVE=<0|1>]
 ```
 
-`PURGE_LENGTH` aliases `PURGE_AMOUNT`. Overlay one call; does not write the snapshot. Does not overlay XY.
+`PURGE_LENGTH` aliases `PURGE_AMOUNT`. Overlay one call; does not write the snapshot. Does not overlay XY. `MOVE` is restore-only (`0` omitted): `0` restores mode and speed override without XYZ; `1` also returns XYZ.
 
 ```gcode
 ; QUAD_GANTRY_LEVEL  or  Z_TILT_ADJUST  if that extra is loaded

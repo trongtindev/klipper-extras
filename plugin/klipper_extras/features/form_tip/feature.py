@@ -7,6 +7,7 @@ import logging
 from ... import klipper_fields as kf, messages as host_msg
 from ...components import ensure_feature_components
 from ...constants import heat_floor_from_min_extrude_temp
+from ..gcode_state import parse_restore_move
 from ..hook.execute import bind_hooked, call_common_hook
 from ..hook.load import load_action_hook_templates, load_on_hook_fail, parse_user_config
 from ..ui_macros import register_ui_macro_shims
@@ -119,6 +120,7 @@ class FormTipRunner:
         will_heat = not (
             s.nozzle_temperature is None and s.min_nozzle_temp is None
         )
+        move = parse_restore_move(gcmd)
         self._save_gcode_state()
         try:
             extra_kind = {"kind": self.kind}
@@ -141,7 +143,7 @@ class FormTipRunner:
             call_common_hook(self.printer, "after", extra_kind)
         finally:
             self._restore_fan(prev_fan)
-            self._restore_gcode_state()
+            self._restore_gcode_state(move)
 
     def _save_gcode_state(self) -> None:
         try:
@@ -151,15 +153,23 @@ class FormTipRunner:
                 "%s", host_msg.line("save gcode state FORM_TIP failed"), exc_info=True
             )
 
-    def _restore_gcode_state(self) -> None:
+    def _restore_gcode_state(self, move: int = 0) -> None:
         try:
             self.gcode.run_script_from_command(CMD_ABSOLUTE)
         except Exception:
-            logging.debug(
+            logging.warning(
                 "%s", host_msg.line("G90 before restore failed"), exc_info=True
             )
+        speed = kf.max_velocity(self.printer)
+        if speed is None:
+            logging.warning(
+                "%s", host_msg.line("RESTORE MOVE_SPEED missing max_velocity")
+            )
+            script = "RESTORE_GCODE_STATE NAME=FORM_TIP MOVE=%d" % (move,)
+        else:
+            script = CMD_RESTORE_STATE_FORM_TIP % (move, speed)
         try:
-            self.gcode.run_script_from_command(CMD_RESTORE_STATE_FORM_TIP)
+            self.gcode.run_script_from_command(script)
         except Exception:
             logging.warning(
                 "%s",

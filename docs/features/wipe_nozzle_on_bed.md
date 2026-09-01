@@ -36,17 +36,21 @@ Omitted XY → `(50, 50) ↔ (100, 50)` (50 mm along X).
 
 Speeds `> 0`. `travel_z > wipe_z`. Negative `wipe_z` is a config error. If both `nozzle_temperature` and `min_nozzle_temp` are set, nozzle temp must be `>= min_nozzle_temp`.
 
-Command wrap (optional `[klipper_extras hook]`): [hook.md](hook.md). Order after `SAVE_GCODE_STATE`: common before → heat / retract / fan / motion → common after → restore in `finally` (no hooks). Wrap templates may move the toolhead; restore still returns XYZ to the pre-command pose.
+Command wrap (optional `[klipper_extras hook]`): [hook.md](hook.md). Order after `SAVE_GCODE_STATE`: common before → heat / retract / fan / motion → common after → restore in `finally` (no hooks). Wrap templates may move the toolhead; `MOVE=1` returns XYZ to the pre-command pose.
 
 ## G-code
 
-`WIPE_NOZZLE_ON_BED` — no parameters (geometry and speeds come from this section).
+```
+WIPE_NOZZLE_ON_BED [MOVE=<0|1>]
+```
+
+Geometry and speeds come from this section. `MOVE` is restore-only (`0` omitted): `0` restores mode and speed override without XYZ; `1` also returns XYZ.
 
 Errors if `[pause_resume]` reports paused (`is_paused`). Printing (including `PRINT_START` after a Moonraker/SD job start) is allowed.
 
 Call from `PRINT_START` **after XYZ are homed**. Heat the nozzle first, or set `nozzle_temperature` here.
 
-Approach lifts to `travel_z` in place, then moves XY, then drops to `wipe_z`. Saves G-code state (`SAVE_GCODE_STATE NAME=WIPE_NOZZLE_ON_BED`) after homing checks, before command wrap and work (including heat). Restores in `finally` (`RESTORE_GCODE_STATE NAME=WIPE_NOZZLE_ON_BED MOVE=1`) so coordinate mode, speed override, and XYZ return to the pre-wipe values. Fan is restored separately. Retract is not undone.
+Approach lifts to `travel_z` in place, then moves XY, then drops to `wipe_z`. Saves G-code state (`SAVE_GCODE_STATE NAME=WIPE_NOZZLE_ON_BED`) after homing checks, before command wrap and work (including heat). Restores in `finally` (`RESTORE_GCODE_STATE NAME=WIPE_NOZZLE_ON_BED MOVE=<0|1>`, default `0`) so coordinate mode and speed override return. `MOVE=1` also returns XYZ to the pre-wipe pose. Fan is restored separately. Retract is not undone.
 
 ```gcode
 G28

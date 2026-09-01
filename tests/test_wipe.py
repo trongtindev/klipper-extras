@@ -3,6 +3,7 @@ import logging
 import pytest
 
 from klipper_extras.constants import MIN_EXTRUDE_TEMP_HEAT_MARGIN
+from klipper_extras.features.gcode import gcode_f
 from klipper_extras.features.wipe_motion.constants import (
     CMD_ABSOLUTE,
     CMD_RESTORE_GCODE_STATE,
@@ -434,11 +435,25 @@ class _FakeToolhead:
 
 
 class _FakeGcmd:
+    def __init__(self, params=None):
+        self._params = params or {}
+
     def error(self, text):
         raise RuntimeError(text)
 
     def respond_info(self, text):
         return None
+
+    def get_int(self, name, default=None, minval=None, maxval=None):
+        val = self._params.get(name, default)
+        if val is None:
+            return default
+        iv = int(val)
+        if minval is not None and iv < minval:
+            raise RuntimeError("%s must be >= %s" % (name, minval))
+        if maxval is not None and iv > maxval:
+            raise RuntimeError("%s must be <= %s" % (name, maxval))
+        return iv
 
 
 class _FileConfig:
@@ -505,19 +520,30 @@ def test_cmd_wipe_saves_then_restores_state():
     runner, gcode = _make_runner(BED_SPEC, s)
     runner.cmd_wipe(_FakeGcmd())
     save = CMD_SAVE_GCODE_STATE % (BED_GCODE,)
-    restore = CMD_RESTORE_GCODE_STATE % (BED_GCODE, s.travel_speed)
+    restore = CMD_RESTORE_GCODE_STATE % (BED_GCODE, 0, s.travel_speed)
     assert gcode.scripts[0] == save
     assert restore == gcode.scripts[-1]
-    assert "MOVE=1" in restore
+    assert "MOVE=0" in restore
     assert "MOVE_SPEED=%.0f" % (s.travel_speed,) in restore
     assert gcode.scripts[1] == CMD_ABSOLUTE
-    lift_z = "G1 Z%.3f F%.0f" % (s.z_hop, s.travel_speed * 60.0)
+    lift_z = "G1 Z%.3f %s" % (s.z_hop, gcode_f(s.travel_speed))
     assert gcode.scripts[2] == lift_z
     assert "X" not in gcode.scripts[2]
     assert "Y" not in gcode.scripts[2]
     assert _script_index(gcode.scripts, save) < _script_index(gcode.scripts, "G1")
     assert gcode.scripts[-2] == lift_z
     assert gcode.scripts[-3] == CMD_ABSOLUTE
+
+
+def test_cmd_wipe_restore_move_1():
+    s = _bed({"retract": 0})
+    runner, gcode = _make_runner(BED_SPEC, s)
+    runner.cmd_wipe(_FakeGcmd({"MOVE": 1}))
+    assert gcode.scripts[-1] == CMD_RESTORE_GCODE_STATE % (
+        BED_GCODE,
+        1,
+        s.travel_speed,
+    )
 
 
 def test_cmd_wipe_restore_name_is_feature_gcode():
@@ -539,7 +565,7 @@ def test_cmd_wipe_restores_state_on_error():
     with pytest.raises(RuntimeError, match="script failed"):
         runner.cmd_wipe(_FakeGcmd())
     assert gcode.scripts[0] == CMD_SAVE_GCODE_STATE % (BED_GCODE,)
-    assert gcode.scripts[-1] == CMD_RESTORE_GCODE_STATE % (BED_GCODE, s.travel_speed)
+    assert gcode.scripts[-1] == CMD_RESTORE_GCODE_STATE % (BED_GCODE, 0, s.travel_speed)
     assert any(script.startswith("G1 X") for script in gcode.scripts)
 
 
@@ -565,10 +591,10 @@ def test_cmd_wipe_rubber_paused_xy_only_holds_z():
     runner, gcode = _make_runner(RUBBER_SPEC, s, is_paused=True)
     runner.cmd_wipe(_FakeGcmd())
     save = CMD_SAVE_GCODE_STATE % (RUBBER_GCODE,)
-    restore = CMD_RESTORE_GCODE_STATE % (RUBBER_GCODE, s.travel_speed)
+    restore = CMD_RESTORE_GCODE_STATE % (RUBBER_GCODE, 0, s.travel_speed)
     assert gcode.scripts[0] == save
     assert gcode.scripts[-1] == restore
-    lift_z = "G1 Z%.3f F%.0f" % (s.z_hop, s.travel_speed * 60.0)
+    lift_z = "G1 Z%.3f %s" % (s.z_hop, gcode_f(s.travel_speed))
     assert lift_z not in gcode.scripts
     assert not any(script.startswith("G1 Z") for script in gcode.scripts)
     assert any(script.startswith("G1 X") and "Z" not in script for script in gcode.scripts)
@@ -590,7 +616,7 @@ def test_cmd_wipe_rubber_not_paused_moves_z():
     s = _rubber({"retract": 0, "passes": 1})
     runner, gcode = _make_runner(RUBBER_SPEC, s, is_paused=False)
     runner.cmd_wipe(_FakeGcmd())
-    lift_z = "G1 Z%.3f F%.0f" % (s.z_hop, s.travel_speed * 60.0)
+    lift_z = "G1 Z%.3f %s" % (s.z_hop, gcode_f(s.travel_speed))
     assert lift_z in gcode.scripts
 
 

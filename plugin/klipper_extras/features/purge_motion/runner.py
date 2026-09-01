@@ -7,6 +7,8 @@ from dataclasses import replace as dataclass_replace
 
 from ... import messages as host_msg
 from ...components import ensure_feature_components
+from ..gcode import gcode_f
+from ..gcode_state import parse_restore_move
 from ..hook.execute import bind_hooked, call_common_hook
 from ..hook.load import load_action_hook_templates, load_on_hook_fail, parse_user_config
 from ..ui_macros import register_ui_macro_shims
@@ -100,6 +102,7 @@ class PurgeRunner:
         if not all(axis in homed for axis in "xyz"):
             raise gcmd.error(msg.not_homed())
         hold_z = self._paused_hold_z_or_error(gcmd)
+        move = parse_restore_move(gcmd)
         for command in unset_leveling_commands(self.printer, eventtime):
             text = msg.leveling_not_applied(command)
             gcmd.respond_info(text)
@@ -152,7 +155,7 @@ class PurgeRunner:
         finally:
             if have_temp:
                 self._restore_fan(s, prev_fan)
-            self._restore_gcode_state(state_name, s, hold_z=hold_z)
+            self._restore_gcode_state(state_name, s, hold_z=hold_z, move=move)
 
     def _is_paused(self) -> bool:
         pause_resume = self.printer.lookup_object("pause_resume", None)
@@ -180,19 +183,23 @@ class PurgeRunner:
         self.gcode.run_script_from_command(CMD_SAVE_GCODE_STATE % (state_name,))
 
     def _restore_gcode_state(
-        self, state_name: str, settings: PurgePathSettings, hold_z: bool = False
+        self,
+        state_name: str,
+        settings: PurgePathSettings,
+        hold_z: bool = False,
+        move: int = 0,
     ) -> None:
         if not hold_z:
             try:
                 self.gcode.run_script_from_command(CMD_ABSOLUTE)
                 self.gcode.run_script_from_command(
-                    "G1 Z%.3f F%.0f" % (settings.travel_z, settings.travel_speed * 60.0)
+                    "G1 Z%.3f %s" % (settings.travel_z, gcode_f(settings.travel_speed))
                 )
             except Exception:
                 logging.warning("%s", msg.lift_before_restore_failed(), exc_info=True)
         try:
             self.gcode.run_script_from_command(
-                CMD_RESTORE_GCODE_STATE % (state_name, settings.travel_speed)
+                CMD_RESTORE_GCODE_STATE % (state_name, move, settings.travel_speed)
             )
         except Exception:
             logging.warning(
@@ -261,7 +268,7 @@ class PurgeRunner:
             parts.append("Z%.3f" % (move.z,))
         if move.e is not None:
             parts.append("E%.4f" % (move.e,))
-        parts.append("F%.0f" % (move.speed * 60.0,))
+        parts.append(gcode_f(move.speed))
         self.gcode.run_script_from_command(" ".join(parts))
 
     def get_status(self, eventtime):

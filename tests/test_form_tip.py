@@ -332,9 +332,14 @@ class _TipFileConfig:
         return False
 
 
+class _TipToolhead:
+    def get_max_velocity(self):
+        return 300.0, 3000.0
+
+
 class _TipPrinter:
     def __init__(self, gcode):
-        self._objects = {"gcode": gcode}
+        self._objects = {"gcode": gcode, "toolhead": _TipToolhead()}
 
     def lookup_object(self, name, default=None):
         return self._objects.get(name, default)
@@ -371,6 +376,9 @@ class _TipConfig:
 
 
 class _TipGcmd:
+    def __init__(self, params=None):
+        self._params = params or {}
+
     def error(self, text):
         raise RuntimeError(text)
 
@@ -378,7 +386,18 @@ class _TipGcmd:
         return None
 
     def get(self, key, default=None):
-        return default
+        return self._params.get(key, default)
+
+    def get_int(self, name, default=None, minval=None, maxval=None):
+        val = self._params.get(name, default)
+        if val is None:
+            return default
+        iv = int(val)
+        if minval is not None and iv < minval:
+            raise RuntimeError("%s must be >= %s" % (name, minval))
+        if maxval is not None and iv > maxval:
+            raise RuntimeError("%s must be <= %s" % (name, maxval))
+        return iv
 
 
 class _EmitTipTemplate:
@@ -420,12 +439,33 @@ def test_cmd_form_tip_action_hooks_order():
     runner.cmd_FORM_TIP(_TipGcmd())
     scripts = gcode.scripts
     assert scripts[0] == "SAVE_GCODE_STATE NAME=FORM_TIP"
-    assert scripts[-1] == "RESTORE_GCODE_STATE NAME=FORM_TIP"
+    assert scripts[-1] == (
+        "RESTORE_GCODE_STATE NAME=FORM_TIP MOVE=0 MOVE_SPEED=300"
+    )
     i_before = scripts.index("BEFORE_SEP")
     i_after = scripts.index("AFTER_SEP")
     i_cool_b = scripts.index("BEFORE_COOL 0")
     i_cool_a = scripts.index("AFTER_COOL 0")
     assert i_before < i_after < i_cool_b < i_cool_a
+
+
+def test_cmd_form_tip_restore_move_1():
+    s = _resolve(
+        {
+            "profile": "a4t_hgx_lite",
+            "cooling_moves": 0,
+            "unloading_speed_start_len": 0,
+            "ramming_len": 0,
+            "fan_speed": 0,
+            "use_skinnydip": False,
+            "parking_distance": 0,
+        }
+    )
+    runner, gcode = _make_tip_runner(s)
+    runner.cmd_FORM_TIP(_TipGcmd({"MOVE": 1}))
+    assert gcode.scripts[-1] == (
+        "RESTORE_GCODE_STATE NAME=FORM_TIP MOVE=1 MOVE_SPEED=300"
+    )
 
 
 def test_cmd_form_tip_common_hooks_wrap():
@@ -455,6 +495,8 @@ def test_cmd_form_tip_common_hooks_wrap():
     assert scripts[0] == "SAVE_GCODE_STATE NAME=FORM_TIP"
     assert scripts[1] == "COMMON_BEFORE"
     assert scripts.index("COMMON_AFTER") < scripts.index(
-        "RESTORE_GCODE_STATE NAME=FORM_TIP"
+        "RESTORE_GCODE_STATE NAME=FORM_TIP MOVE=0 MOVE_SPEED=300"
     )
-    assert scripts[-1] == "RESTORE_GCODE_STATE NAME=FORM_TIP"
+    assert scripts[-1] == (
+        "RESTORE_GCODE_STATE NAME=FORM_TIP MOVE=0 MOVE_SPEED=300"
+    )

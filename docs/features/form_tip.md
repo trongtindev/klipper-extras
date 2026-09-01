@@ -66,15 +66,15 @@ Each numbered step is an action with `before_<action>_gcode` / `after_<action>_g
 8. **`skinnydip`** — `E+dip_in` → `G4` → `E−dip_in` → `G4` (if `use_skinnydip`)
 9. **`parking`** — `G1 E−|parking_distance|` (if != 0)
 
-Fan restored + `RESTORE_GCODE_STATE NAME=FORM_TIP` in `finally` (no hooks). Unknown commands are not a hook failure; use `{ action_raise_error('…') }`.
+Fan restored + `RESTORE_GCODE_STATE NAME=FORM_TIP MOVE=<0|1> MOVE_SPEED=<max_velocity>` (default `MOVE=0`) in `finally` (no hooks). Unknown commands are not a hook failure; use `{ action_raise_error('…') }`.
 
 ## G-code
 
 ```
-FORM_TIP [PARAM=VALUE ...]
+FORM_TIP [MOVE=<0|1>] [PARAM=VALUE ...]
 ```
 
-All option keys can be overridden per-call via UPPER_SNAKE_CASE G-code params. Common aliases:
+`MOVE` is restore-only (`0` omitted): `0` restores mode and speed override without XYZ; `1` also returns XYZ. All option keys can be overridden per-call via UPPER_SNAKE_CASE G-code params. Common aliases:
 
 | Alias | Maps to |
 |-------|---------|
@@ -91,7 +91,7 @@ FORM_TIP NOZZLE_TEMP=220 COOLING_MOVES=6
 FORM_TIP UNLOAD_START=100 TIP_DISTANCE=40
 ```
 
-Saves G-code state (`SAVE_GCODE_STATE NAME=FORM_TIP`) after homing checks, before hooks and actions (including heat). Restores in `finally` (`RESTORE_GCODE_STATE NAME=FORM_TIP`) so coordinate mode and speed override return to pre-command values. Fan is restored separately.
+Saves G-code state (`SAVE_GCODE_STATE NAME=FORM_TIP`) after homing checks, before hooks and actions (including heat). Restores in `finally` (`RESTORE_GCODE_STATE NAME=FORM_TIP MOVE=<0|1> MOVE_SPEED=<max_velocity>`, default `MOVE=0`) so coordinate mode and speed override return. `MOVE=1` also returns XYZ to the pre-command pose at `[printer] max_velocity` (Klipper `MOVE_SPEED` is mm/s). Fan is restored separately.
 
 ## Status
 

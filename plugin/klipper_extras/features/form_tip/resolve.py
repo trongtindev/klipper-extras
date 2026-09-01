@@ -15,6 +15,7 @@ from ...resolve import (
     pick_optional_str,
     present,
 )
+from ..gcode import gcode_f
 from . import messages as msg
 from .constants import PARAM_ALIASES, PROFILES
 from .types import FormTipHints, FormTipProfile, FormTipSettings, FormTipStep
@@ -148,16 +149,12 @@ def _gcode_float(value: float) -> str:
     return "%.3f" % (value,)
 
 
-def _gcode_speed(speed_mms: float) -> str:
-    return "F%.0f" % (speed_mms * 60.0,)
-
-
 def _emit_extrude(delta: float, speed: float, label: str) -> Optional[FormTipStep]:
-    """G1 E{delta} F{speed*60} in relative extrusion mode."""
+    """G1 E{delta} with F from mm/s in relative extrusion mode."""
     if delta == 0:
         return None
     return FormTipStep(
-        command="G1 E%s %s" % (_gcode_float(delta), _gcode_speed(speed)),
+        command="G1 E%s %s" % (_gcode_float(delta), gcode_f(speed)),
         label=label,
     )
 
@@ -218,9 +215,9 @@ def plan_tip_steps(settings: FormTipSettings) -> list[FormTipStep]:
                     command="G1 E%s %s\nG1 E-%s %s"
                     % (
                         _gcode_float(cool_len),
-                        _gcode_speed(slow),
+                        gcode_f(slow),
                         _gcode_float(cool_len),
-                        _gcode_speed(slow),
+                        gcode_f(slow),
                     ),
                     label="cool_0",
                 )
@@ -235,9 +232,9 @@ def plan_tip_steps(settings: FormTipSettings) -> list[FormTipStep]:
                         command="G1 E%s %s\nG1 E-%s %s"
                         % (
                             _gcode_float(cool_len),
-                            _gcode_speed(speed),
+                            gcode_f(speed),
                             _gcode_float(cool_len),
-                            _gcode_speed(step_speed),
+                            gcode_f(step_speed),
                         ),
                         label="cool_%d" % (move,),
                     )
@@ -248,13 +245,13 @@ def plan_tip_steps(settings: FormTipSettings) -> list[FormTipStep]:
         parts = []
         parts.append("G1 E%s %s" % (
             _gcode_float(settings.dip_in),
-            _gcode_speed(settings.dip_in_speed),
+            gcode_f(settings.dip_in_speed),
         ))
         if settings.pause_melt_ms > 0:
             parts.append("G4 P%d" % (settings.pause_melt_ms,))
         parts.append("G1 E-%s %s" % (
             _gcode_float(settings.dip_in),
-            _gcode_speed(settings.dip_out_speed),
+            gcode_f(settings.dip_out_speed),
         ))
         if settings.pause_cool_ms > 0:
             parts.append("G4 P%d" % (settings.pause_cool_ms,))
@@ -267,7 +264,7 @@ def plan_tip_steps(settings: FormTipSettings) -> list[FormTipStep]:
                 command="G1 E-%s %s"
                 % (
                     _gcode_float(abs(settings.parking_distance)),
-                    _gcode_speed(settings.park_speed),
+                    gcode_f(settings.park_speed),
                 ),
                 label="parking",
             )

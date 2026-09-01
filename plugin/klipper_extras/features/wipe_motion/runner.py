@@ -7,6 +7,8 @@ import logging
 from ... import messages as host_msg
 from ...components import ensure_feature_components
 from ...resolve import present
+from ..gcode import gcode_f
+from ..gcode_state import parse_restore_move
 from ..hook.execute import call_common_hook
 from ..hook.load import parse_user_config
 from ..ui_macros import register_ui_macro_shims
@@ -73,6 +75,7 @@ class WipeRunner:
         if not all(axis in homed for axis in "xyz"):
             raise gcmd.error(msg.not_homed())
         hold_z = self._paused_hold_z_or_error(gcmd)
+        move = parse_restore_move(gcmd)
         will_heat = (not hold_z) and not (
             s.nozzle_temperature is None and s.min_nozzle_temp is None
         )
@@ -90,8 +93,8 @@ class WipeRunner:
                 have_temp = self._wait_nozzle(gcmd, s)
             if have_temp and s.retract > 0:
                 self.gcode.run_script_from_command(
-                    "G91\nG1 E%.3f F%.0f\nG90"
-                    % (-s.retract, s.retract_speed * 60.0)
+                    "G91\nG1 E%.3f %s\nG90"
+                    % (-s.retract, gcode_f(s.retract_speed))
                 )
             if have_temp and s.fan is not None:
                 self._set_fan(s.fan_speed)
@@ -100,7 +103,7 @@ class WipeRunner:
         finally:
             if have_temp:
                 self._restore_fan(prev_fan)
-            self._restore_gcode_state(state_name, s, hold_z=hold_z)
+            self._restore_gcode_state(state_name, s, hold_z=hold_z, move=move)
 
     def _is_paused(self) -> bool:
         pause_resume = self.printer.lookup_object("pause_resume", None)
@@ -136,20 +139,24 @@ class WipeRunner:
         self.gcode.run_script_from_command(CMD_SAVE_GCODE_STATE % (state_name,))
 
     def _restore_gcode_state(
-        self, state_name: str, settings: WipePathSettings, hold_z: bool = False
+        self,
+        state_name: str,
+        settings: WipePathSettings,
+        hold_z: bool = False,
+        move: int = 0,
     ) -> None:
-        """Return XYZ and G-code mode to the snapshot. Fan is restored separately."""
+        """Restore G-code mode; MOVE=1 also returns XYZ. Fan is restored separately."""
         if not hold_z:
             try:
                 self.gcode.run_script_from_command(CMD_ABSOLUTE)
                 self.gcode.run_script_from_command(
-                    "G1 Z%.3f F%.0f" % (settings.z_hop, settings.travel_speed * 60.0)
+                    "G1 Z%.3f %s" % (settings.z_hop, gcode_f(settings.travel_speed))
                 )
             except Exception:
                 logging.warning("%s", msg.lift_before_restore_failed(), exc_info=True)
         try:
             self.gcode.run_script_from_command(
-                CMD_RESTORE_GCODE_STATE % (state_name, settings.travel_speed)
+                CMD_RESTORE_GCODE_STATE % (state_name, move, settings.travel_speed)
             )
         except Exception:
             logging.warning(
@@ -228,7 +235,7 @@ class WipeRunner:
             parts.append("Y%.3f" % (move.y,))
         if move.z is not None:
             parts.append("Z%.3f" % (move.z,))
-        parts.append("F%.0f" % (move.speed * 60.0,))
+        parts.append(gcode_f(move.speed))
         self.gcode.run_script_from_command(" ".join(parts))
 
     def get_status(self, eventtime):

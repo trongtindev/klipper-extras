@@ -24,13 +24,13 @@ This extra is a **host** plus **owned features**. The host is version floor, log
 Any feature command that issues motion or changes G-code mode (G90/G91, F, retract, fan) **must** wrap that work so the printer returns to the pre-command state.
 
 - `SAVE_GCODE_STATE` **after** homing checks, **before** the first mode or motion command. Heat wait is a hooked action: it runs **after** save, inside `try`.
-- `RESTORE_GCODE_STATE` in `finally` (success **and** error). Use `MOVE=1` so XYZ return; `MOVE_SPEED` is that feature’s travel speed in **mm/s** (Klipper’s unit — do not multiply by 60).
+- `RESTORE_GCODE_STATE` in `finally` (success **and** error). Pass G-code `MOVE` (`0` or `1`; default `0` if omitted). `MOVE=1` returns XYZ; `MOVE_SPEED` is that feature’s travel speed in **mm/s** (Klipper’s unit — do not multiply by 60). Do not hardcode `MOVE=1`. `MOVE` is a command param, not a section option.
 - `NAME` is the feature G-code (`WIPE_NOZZLE_ON_BED`), never a shared `"wipe"`. Sequential `WIPE_NOZZLE_ON_BED` then `WIPE_NOZZLE_ON_RUBBER` must not restore the wrong snapshot.
-- Lift to `travel_z` in absolute mode (`G90`) before `MOVE=1` so a failed wipe at `wipe_z` cannot scrape.
+- Lift to `travel_z` in absolute mode (`G90`) before restore so a failed wipe at `wipe_z` cannot scrape.
 - Fan is **not** in G-code state — snapshot speed before save and restore fan separately.
 - Klipper `MOVE=1` does not reverse E; do not unretract on restore.
 - Restore failure: log a **warning**. Do not raise from `finally` (that hides the original error). Do not swallow it at `debug` as a silent fallback.
-- Host-only commands that do not move (`EXTRAS_STATUS`, `EXTRAS_VERSION`) do not save/restore.
+- Host-only commands that do not move (`EXTRAS_STATUS`, `EXTRAS_VERSION`) do not save/restore. `[klipper_extras hook]` has no command. `PAUSE` / `RESUME` / `CANCEL_PRINT` do **not** save/restore in `finally` (the pause spans two commands). Stock `PAUSE_STATE` stays on BASE.
 
 ## Feature hooks (before / after each action)
 
@@ -124,6 +124,8 @@ Do **not** invent config keys. Host keys: `CONFIG_OPTION_KEYS`. Each feature: it
 | Hook load (templates, `parse_user_config`, `on_hook_fail`, `debug`) | `features/hook/load.py` |
 | Hook key helper / `on_hook_fail` resolve | `features/hook/policy.py` (`hook_option_keys_for_actions`) |
 | Frontend `gcode_macro` status objects | `features/ui_macros.py` (`register_ui_macro_shims`) |
+| Feature SAVE/RESTORE `MOVE` param | `features/gcode_state.py` (`parse_restore_move`) |
+| G1 `F` from mm/s | `features/gcode.py` (`gcode_feedrate`, `gcode_f`). Not for `MOVE_SPEED`. |
 | Host option reference | `docs/configuration.md` |
 | Host G-codes | `docs/gcodes.md` |
 | Feature option + G-code reference | `docs/features/<kind>.md` |
@@ -188,7 +190,7 @@ Prefer extending existing tests over ad-hoc scripts.
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **klipper_common_plugin** (1734 symbols, 3088 relationships, 102 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **klipper_common_plugin** (1745 symbols, 3117 relationships, 102 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

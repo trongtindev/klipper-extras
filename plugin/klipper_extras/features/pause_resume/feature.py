@@ -7,6 +7,7 @@ import logging
 from ... import klipper_fields as kf, messages as host_msg
 from ...components import ensure_feature_components
 from ...respond_action import prompt_end, prompt_show, respond_error
+from ..gcode import gcode_f
 from ..hook.execute import bind_hooked, call_common_hook
 from ..hook.load import load_action_hook_templates, load_on_hook_fail, parse_user_config
 from ..ui_macros import register_ui_macro_shims
@@ -227,12 +228,12 @@ class PauseResumeRunner:
 
     def _do_retract(self, length: float, speed: float) -> None:
         self.gcode.run_script_from_command(
-            "M83\nG1 E%.3f F%.0f" % (-abs(length), speed * 60.0)
+            "M83\nG1 E%.3f %s" % (-abs(length), gcode_f(speed))
         )
 
     def _do_unretract(self, length: float, speed: float) -> None:
         self.gcode.run_script_from_command(
-            "M83\nG1 E%.3f F%.0f" % (abs(length), speed * 60.0)
+            "M83\nG1 E%.3f %s" % (abs(length), gcode_f(speed))
         )
 
     def _do_z_hop(self, gcmd, s: PauseResumeSettings, z_min: float) -> None:
@@ -249,7 +250,7 @@ class PauseResumeRunner:
         if axis_max is not None and z_park > axis_max:
             raise gcmd.error(msg.z_park_too_high(z_park, axis_max))
         self.gcode.run_script_from_command(
-            "G90\nG1 Z%.3f F%.0f" % (z_park, s.z_speed * 60.0)
+            "G90\nG1 Z%.3f %s" % (z_park, gcode_f(s.z_speed))
         )
 
     def _do_park(self, gcmd, park_x, park_y, s: PauseResumeSettings) -> None:
@@ -258,8 +259,8 @@ class PauseResumeRunner:
             gcmd.respond_info(msg.not_homed_skip("park"))
             return
         self.gcode.run_script_from_command(
-            "G90\nG1 X%.3f Y%.3f F%.0f"
-            % (park_x, park_y, s.travel_speed * 60.0)
+            "G90\nG1 X%.3f Y%.3f %s"
+            % (park_x, park_y, gcode_f(s.travel_speed))
         )
 
     def _pause_actions(self, gcmd, s: PauseResumeSettings, z_min: float) -> None:

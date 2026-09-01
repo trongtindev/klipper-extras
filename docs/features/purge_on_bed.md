@@ -75,14 +75,14 @@ Command wrap (optional `[klipper_extras hook]`): [hook.md](hook.md). Order after
 ## G-code
 
 ```
-PURGE_ON_BED [PURGE_AMOUNT=<mm>] [PURGE_LENGTH=<mm>]
+PURGE_ON_BED [PURGE_AMOUNT=<mm>] [PURGE_LENGTH=<mm>] [MOVE=<0|1>]
 ```
 
-`PURGE_LENGTH` is an alias for `PURGE_AMOUNT` (filament mm). Overlay one call; does not write the snapshot. Does not overlay XY or `style`.
+`PURGE_LENGTH` is an alias for `PURGE_AMOUNT` (filament mm). Overlay one call; does not write the snapshot. Does not overlay XY or `style`. `MOVE` is restore-only (`0` omitted): `0` restores mode and speed override without XYZ; `1` also returns XYZ.
 
 Errors if `[pause_resume]` reports paused (`is_paused`). Printing (including `PRINT_START`) is allowed.
 
-Call from `PRINT_START` **after XYZ are homed**. If `[quad_gantry_level]` or `[z_tilt]` is loaded and has not been applied, a console warning is printed and purge continues (does not abort). Saves `SAVE_GCODE_STATE NAME=PURGE_ON_BED` after homing (and adaptive origin), restores in `finally` (`MOVE=1`). Fan restored separately. Retract is not undone.
+Call from `PRINT_START` **after XYZ are homed**. If `[quad_gantry_level]` or `[z_tilt]` is loaded and has not been applied, a console warning is printed and purge continues (does not abort). Saves `SAVE_GCODE_STATE NAME=PURGE_ON_BED` after homing (and adaptive origin), restores in `finally` (`MOVE` from the command, default `0`). Fan restored separately. Retract is not undone.
 
 ```gcode
 G28
