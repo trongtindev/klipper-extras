@@ -24,7 +24,7 @@ cat > "${moon}" <<'EOF'
 host: 0.0.0.0
 EOF
 
-"${ROOT}/plugin/install.sh" -k "${klipper}" -m "${moon}" >/dev/null
+"${BASH:-bash}" "${ROOT}/plugin/install.sh" -k "${klipper}" -m "${moon}" >/dev/null
 
 [[ -L "${extras}/klipper_extras" ]] || fail "expected extras symlink"
 dest="$(readlink -f "${extras}/klipper_extras")"
@@ -34,7 +34,7 @@ grep -q '\[update_manager klipper_extras\]' "${moon}" || fail "moonraker section
 grep -q "path: ${ROOT}" "${moon}" || fail "moonraker path not repo root"
 pass "install symlink + moonraker"
 
-"${ROOT}/plugin/uninstall.sh" -k "${klipper}" -m "${moon}" >/dev/null
+"${BASH:-bash}" "${ROOT}/plugin/uninstall.sh" -k "${klipper}" -m "${moon}" >/dev/null
 
 [[ -e "${extras}/klipper_extras" ]] && fail "extras path remained after uninstall"
 grep -q '\[update_manager klipper_extras\]' "${moon}" && fail "moonraker section remained"

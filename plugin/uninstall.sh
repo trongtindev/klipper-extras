@@ -7,4 +7,4 @@
 # Usage: ./plugin/uninstall.sh [-k KLIPPER_PATH] [-m MOONRAKER_CONF] [-h]
 set -euo pipefail
 SRCDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec "${SRCDIR}/install.sh" -u "$@"
+exec "${BASH:-bash}" "${SRCDIR}/install.sh" -u "$@"
